@@ -1,0 +1,6 @@
+I would be keen to mention why we do not need to use tangential components of velocity.
+
+I thought I would share some things that could go in section 2.5. As is missing some details,  
+I think Boris and Books appendix and P Steinle, R Morrow, 1989, could be referenced, as they do an implicit correction on an explicit scheme. 
+
+

@@ -1,0 +1,5432 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass extarticle
+\begin_preamble
+%\newcommand{\nicefrac}[2]{\ensuremath ^{#1}\!\!/\!_{#2}}
+\usepackage{fancybox}
+\usepackage[export]{adjustbox}
+
+\usepackage{todonotes}
+%\usepackage{afterpage}
+
+%\usepackage[switch]{lineno}
+
+\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
+
+\newcommand\BibTeX{{\rmfamily B\kern-.05em \textsc{i\kern-.025em b}\kern-.08em
+T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+%\usepackage{moreverb}
+
+\usepackage{flushend}
+\end_preamble
+\options times
+\use_default_options false
+\maintain_unincluded_children false
+\language british
+\language_package none
+\inputencoding auto
+\fontencoding global
+\font_roman "times" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format pdf2
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 12
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 2
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style \use_bibtopic false
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\paperwidth 15cm
+\paperheight 12cm
+\leftmargin 2.5cm
+\topmargin 2.5cm
+\rightmargin 2.5cm
+\bottommargin 2.5cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Adaptively Implicit MPDATA Advection for Arbitrary Courant numbers and Meshes
+\end_layout
+
+\begin_layout Author
+Hilary Weller, James Woodfield, Christian K
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+"u
+\end_layout
+
+\end_inset
+
+hnlein and Piotr K.
+ Smolarkiewicz
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Subsection*
+Motivation
+\end_layout
+
+\begin_layout Standard
+Time step restrictions based on advection have always posed a problem for
+ models of the atmosphere.
+ The Courant-Friedrichs-Lewy (CFL) condition states that explicit Eulerian
+ schemes will have time step restrictions based on the size of the domain
+ of dependence.
+ Typically this means that explicit schemes cannot run with a Courant number
+ greater than one or thereabouts.
+ This is equivalent to saying that an advected quantity cannot be moved
+ by more than one mesh cell (or grid box) in one time step.
+\end_layout
+
+\begin_layout Standard
+CFL constraints can be particularly cruel where resolution is higher than
+ it needs to be for accuracy, such as near the poles of a latitude-longitude
+ mesh.
+ An early work around was to use polar filtering; artificially removing
+ oscillations near the poles where mesh lines converge 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "CD91"
+
+\end_inset
+
+.
+ Polar filtering has been improved and used more recently in magneto-hydro-dynam
+ics by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "ZSL+19"
+
+\end_inset
+
+.
+ However polar filtering led to parallel scaling bottlenecks and mistrust
+ of solutions near the poles in models of the atmosphere.
+ The UK Met Office gained accuracy and efficiency by replacing their model
+ employing polar filtering with a semi-implicit , semi-Lagrangian (SISL)
+ model to avoid time step restrictions on a latitude-longitude mesh 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "DCM+05"
+
+\end_inset
+
+.
+ SISL eases time step constraints by treating acoustic and gravity waves
+ implicitly while the advection is solved with the semi-Lagrangian method
+ which is stable, accurate and efficient for long time steps but not conservativ
+e.
+ The lack of conservation is regarded as inadequate for climate modelling
+ and is associated with spurious features such as eternal fountains which
+ involve a positive feedback loop that creates moisture in convectively
+ unstable columns 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "ZA20"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The requirement to run stably with large Courant numbers is less severe
+ now that weather and climate models have largely moved away from latitude-longi
+tude meshes in favour of quasi-uniform meshes such as the cubed sphere and
+ icosahedral meshes 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "UJK+17"
+
+\end_inset
+
+.
+ However, the problem remains severe in the vertical direction where mesh
+ spacing can be fine and large vertical velocities can occur when atmospheric
+ convection is resolved.
+ A solution in the vertical direction is to use Lagrangian floating levels
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Lin04"
+
+\end_inset
+
+ that are conservatively mapped back to the fixed Eulerian mesh.
+ Lagrangian floating levels are equivalent to conservative semi-Lagrangian
+ 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "HLM11"
+
+\end_inset
+
+ which can be made efficient for large Courant numbers in one dimension
+ and consequently can work on tensor product meshes 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "eg."
+key "LLM96"
+
+\end_inset
+
+.
+ These are related to the Arbitrary Lagrangian-Eulerian (ALE) method 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "eg. "
+key "HAC97"
+
+\end_inset
+
+ which solves equations in a Lagrangian frame and them remaps the solution
+ back to the original mesh.
+ However ALE methods suffer from time step restrictions associated with
+ avoiding mesh distortions.
+\end_layout
+
+\begin_layout Standard
+Due to the difficulties in allowing long time steps while maintaining exact
+ local conservation on arbitrary meshes, it is worth considering implicit
+ time stepping for advection.
+ The aim of this paper is to present an advection scheme with the following
+ properties:
+\end_layout
+
+\begin_layout Enumerate
+Stable for very large Courant numbers.
+\end_layout
+
+\begin_layout Enumerate
+Applicable on arbitrary meshes.
+\end_layout
+
+\begin_layout Enumerate
+Similar cost and accuracy to explicit schemes when the Courant number is
+ below one.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Monotonic when required.
+\end_layout
+
+\begin_layout Enumerate
+At least first-order accurate where the Courant number is large.
+\end_layout
+
+\begin_layout Enumerate
+Multi-tracer efficient.
+\end_layout
+
+\begin_layout Enumerate
+Good parallel scaling.
+\end_layout
+
+\begin_layout Standard
+This paper proposes the use of blended implicit/explicit time stepping combined
+ with the MPDATA advection scheme (multidimensional positive definite advection
+ transport algorithm).
+ However the methods for combining implicit and explicit and the method
+ for achieving monotonicity should translate to other explicit advection
+ schemes.
+\end_layout
+
+\begin_layout Subsection*
+Background on MPDATA
+\end_layout
+
+\begin_layout Standard
+MPDATA was introduced by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Smol83,Smol84"
+
+\end_inset
+
+ and reviewed by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "SM98"
+
+\end_inset
+
+.
+ MPDATA consists of a first-order upwind, explicit step to solve the advection
+ equation followed by a correction step to remove the first-order error.
+ An anti-diffusive velocity is calculated and the solution of the first-order
+ step is corrected by advecting it with the anti-diffusive velocity.
+ The corrective transport is also applied using explicit first-order upwind
+ differencing so the solution remains positive definite.
+ The anti-diffusive velocity is necessarily divergent so the scheme is not
+ bounded above.
+ The resulting scheme is second-order accurate in space and time and stable
+ for a Courant number less than one.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "SS05b"
+
+\end_inset
+
+ extended MPDATA to unstructured meshes while retaining second-order accuracy.
+\end_layout
+
+\begin_layout Standard
+In order to use MPDATA to advect vectors and other signed quantities and
+ also to improve accuracy, MPDATA gauge effectively advects a quantity plus
+ a constant in order to move values away from zero 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "SC86"
+
+\end_inset
+
+, meaning that the advected quantity is no longer bounded below by zero.
+ Monotonicity can be enforced using flux-corrected transport 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "SG90,Zal79"
+
+\end_inset
+
+.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "KS17"
+
+\end_inset
+
+ combine the temporal correction with the divergence correction to create
+ an anti-diffusive velocity that is defined only in terms of fluxes.
+\end_layout
+
+\begin_layout Subsection*
+Background on Implicit Time Stepping
+\end_layout
+
+\begin_layout Standard
+Implicit time stepping is ubiquitous in atmospheric modelling for solving
+ the terms of the equations of motion responsible for fast waves such as
+ gravity and acoustic waves.
+ However, implicit time stepping has been used very little for advection
+ in atmosphere and ocean modelling.
+ Implicit time stepping for advection in the mathematics and engineering
+ literature will be discussed first and then we will return to its uses
+ to date in atmosphere and ocean modelling.
+\end_layout
+
+\begin_layout Standard
+Implicit time stepping for advection has a severe order barrier; no implicit
+ method exists with order greater than one which is monotonic for all time
+ steps 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "GST01"
+
+\end_inset
+
+.
+ Higher order implicit multi-stage (Runge-Kutta) and multi-step schemes
+ exist that are unconditionally linearly stable but if we additionally require
+ monotonicity (no new extrema generated), then higher-order implicit methods
+ have time step restrictions, known as radii of monotonicity.
+ As with spatial discretisation, high order implicit time stepping has been
+ non-linearly combined with first order implicit time stepping to try to
+ break the order barrier and increase the radius of monotoncity.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "YWH85,Yee87"
+
+\end_inset
+
+ proposed implicit TVD (total variation diminishing) schemes for solving
+ hyperbolic equations and achieved high accuracy for large Courant numbers.
+ However they could not find a second-order scheme that was guaranteed both
+ TVD and conservative for non-constant coefficient advection.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "MB17"
+
+\end_inset
+
+ used flux corrected transport 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "FCT,"
+key "Zal79"
+
+\end_inset
+
+ to improve temporal accuracy in implicitly solved small cells without generatin
+g new extrema.
+ 
+\end_layout
+
+\begin_layout Standard
+In atmospheric modelling, implicit time stepping for advection has been
+ used to treat small, cut-cells stably at modest time steps 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "e.g."
+key "JKW11"
+
+\end_inset
+
+ and more recently to treat isolated strong updrafts stably 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "WS20"
+
+\end_inset
+
+.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "WS20"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Shch15"
+
+\end_inset
+
+ avoided the order barriers by limiting order of accuracy to first where
+ ever implicit time stepping for advection was used.
+ The lack of accuracy was not considered problematic because of the sparsity
+ of the use of implicit advection.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "CWPS17"
+
+\end_inset
+
+ compared implicit advection with dimensionally split, flux-form semi-Lagrangian
+ advection and found that the dimensionally split scheme was more accurate
+ and more efficient than implicit advection for all Courant numbers.
+ However, this was not a like for like comparison; the dimensionally split
+ scheme was a higher-order accurate scheme, limited to tensor product meshes
+ and suffered from mesh imprinting errors on distorted meshes.
+ 
+\end_layout
+
+\begin_layout Section
+An Implicit/Explicit MPDATA
+\end_layout
+
+\begin_layout Standard
+The version of explicit MPDATA and the blended implicit/explicit MPDATA
+ defined here are implemented using the OpenFOAM library (
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+https://openfoam.org/
+\end_layout
+
+\end_inset
+
+) using standard OpenFOAM operators and linear equation solvers.
+ The code is available as part of the AtmosFOAM repository (
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+https://github.com/AtmosFOAM/
+\end_layout
+
+\end_inset
+
+).
+ 
+\end_layout
+
+\begin_layout Subsection
+Explicit MPDATA on an Arbitrary Mesh
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset External
+	template XFig
+	filename figures/cells.fig
+	display false
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Two cells in an arbitrary mesh.
+ 
+\begin_inset Formula $\mathbf{x}_{C}$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbf{x}_{N}$
+\end_inset
+
+ are the cell centres of cell 
+\begin_inset Formula $C$
+\end_inset
+
+ and its neighbour, 
+\begin_inset Formula $N$
+\end_inset
+
+, over face 
+\begin_inset Formula $f$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbf{x}_{f}$
+\end_inset
+
+ is the face centre.
+ 
+\begin_inset Formula $\mathbf{S}_{f}$
+\end_inset
+
+ is the face area vector, normal to face 
+\begin_inset Formula $f$
+\end_inset
+
+ with magnitude equal to the face area.
+ 
+\begin_inset Formula $\mathbf{u}$
+\end_inset
+
+ is the velocity and 
+\begin_inset Formula $\mathbf{x}_{d}$
+\end_inset
+
+ is the departure point for face 
+\begin_inset Formula $f$
+\end_inset
+
+ at time 
+\begin_inset Formula $n+\nicefrac{1}{2}$
+\end_inset
+
+ (i.e.
+ the centre of the volume swept through the face between times 
+\begin_inset Formula $n$
+\end_inset
+
+ and 
+\begin_inset Formula $n+1$
+\end_inset
+
+).
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:cells"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The description of the explicit scheme is consistent with basic MPDATA principle
+s 
+\begin_inset CommandInset citation
+LatexCommand citep
+before "e.g."
+key "SS05b"
+
+\end_inset
+
+, but introduces a novel derivation based on a flux-form semi-Lagrangian
+ method and assuming an arbitrary mesh in Cartesian co-ordinates rather
+ than using co-ordinate transforms.
+ We will describe MPDATA for solving the linear advection equation for advected
+ quantity 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ with velocity field 
+\begin_inset Formula $\mathbf{u}$
+\end_inset
+
+:
+\begin_inset Formula 
+\begin{equation}
+\frac{\partial\Psi}{\partial t}+\nabla\cdot\left(\mathbf{u}\Psi\right)=0.\label{eq:linearAdvection}
+\end{equation}
+
+\end_inset
+
+This is solved using Gauss's divergence theorem on an arbitrary mesh to
+ go from time level 
+\begin_inset Formula $n$
+\end_inset
+
+ to 
+\begin_inset Formula $n+1$
+\end_inset
+
+ a time step 
+\begin_inset Formula $\Delta t$
+\end_inset
+
+ apart:
+\begin_inset Formula 
+\begin{equation}
+\Psi_{C}^{n+1}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{f}^{n+\nicefrac{1}{2}}U_{f}\label{eq:advectionGauss}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\Psi_{C}$
+\end_inset
+
+ is the cell mean value of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ in cell 
+\begin_inset Formula $C$
+\end_inset
+
+, 
+\begin_inset Formula $V_{C}$
+\end_inset
+
+ is the volume of cell 
+\begin_inset Formula $C$
+\end_inset
+
+, 
+\begin_inset Formula $f\in C$
+\end_inset
+
+ are the faces of cell 
+\begin_inset Formula $C$
+\end_inset
+
+, 
+\begin_inset Formula $\Psi_{f}^{n+\nicefrac{1}{2}}$
+\end_inset
+
+ is the value of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ at face 
+\begin_inset Formula $f$
+\end_inset
+
+ at time 
+\begin_inset Formula $n+\nicefrac{1}{2}$
+\end_inset
+
+, 
+\begin_inset Formula $\mathbf{u}_{f}$
+\end_inset
+
+ the velocity at face 
+\begin_inset Formula $f$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbf{S}_{f}$
+\end_inset
+
+ is the face area vector — the outward pointing vector normal to face 
+\begin_inset Formula $f$
+\end_inset
+
+ with magnitude equal to the area of face 
+\begin_inset Formula $f$
+\end_inset
+
+ (fig 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:cells"
+
+\end_inset
+
+).
+ 
+\begin_inset Formula $U_{f}=\mathbf{u}_{f}\cdot\mathbf{S}_{f}$
+\end_inset
+
+ is the volume flux over face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ In this derivation of MPDATA, 
+\begin_inset Formula $\Psi_{f}$
+\end_inset
+
+ is evaluated at the departure point of the face centre at time 
+\begin_inset Formula $n$
+\end_inset
+
+.
+ The departure point, 
+\begin_inset Formula $\mathbf{x}_{d}$
+\end_inset
+
+, is the centre of the volume swept through the face between times 
+\begin_inset Formula $n$
+\end_inset
+
+ and 
+\begin_inset Formula $n+1$
+\end_inset
+
+ which is approximated by the point a distance 
+\begin_inset Formula $\mathbf{u}\Delta t/2$
+\end_inset
+
+ upstream of the face centre:
+\begin_inset Formula 
+\begin{equation}
+\mathbf{x}_{d}=\mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}+O\left(\Delta t\right)^{2}\label{eq:departure}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\mathbf{x}_{f}$
+\end_inset
+
+ is the face centre (see fig 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:cells"
+
+\end_inset
+
+).
+ The velocity, 
+\begin_inset Formula $\mathbf{u}_{f}$
+\end_inset
+
+, is evaluated at time 
+\begin_inset Formula $n+\nicefrac{1}{2}$
+\end_inset
+
+ at the face.
+ In this paper the wind is prescribed.
+ In a more complete model, 
+\begin_inset Formula $\mathbf{u}_{f}^{n+\nicefrac{1}{2}}$
+\end_inset
+
+ would be evaluated from velocities at known positions and times.
+ The dependent variable, 
+\begin_inset Formula $\Psi$
+\end_inset
+
+, is evaluated at the departure point using the upwind cell centre value
+ of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+, the gradient of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ and the velocity divergence:
+\begin_inset Formula 
+\begin{equation}
+\Psi_{f}^{n+\nicefrac{1}{2}}=\Psi_{d}^{n}=\Psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi^{n}-\frac{\Delta t}{2}\Psi_{\text{up}}^{n}\nabla\cdot\mathbf{u}+O\left(\Delta x^{2},\Delta t^{2}\right)\label{eq:PsiDep}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\Psi_{\text{up}}$
+\end_inset
+
+ is the value of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ in the cell upwind of face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ 
+\begin_inset Formula $\nabla\Psi$
+\end_inset
+
+ can be calculated in cells (
+\begin_inset Formula $C$
+\end_inset
+
+) to second-order accuracy on an arbitrary mesh using a least-squares approximat
+ion:
+\begin_inset Formula 
+\begin{equation}
+\nabla\Psi=\sum_{f\in C}\mathbf{g}_{f}\left(\Psi_{N}-\Psi_{C}\right)
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\Psi_{N}$
+\end_inset
+
+ is 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ in the neighbour of cell 
+\begin_inset Formula $C$
+\end_inset
+
+ across face 
+\begin_inset Formula $f$
+\end_inset
+
+ and where 
+\begin_inset Formula $\mathbf{g}_{f}$
+\end_inset
+
+ is a vector calculated for each face of cell 
+\begin_inset Formula $C$
+\end_inset
+
+ based entirely on the local mesh geometry:
+\begin_inset Formula 
+\begin{eqnarray*}
+\mathbf{g}_{f} & = & \left(1-w_{f}\right)\frac{|\mathbf{S}_{f}|}{|\mathbf{x}_{N}-\mathbf{x}_{C}|^{2}}D_{C}^{-1}\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\\
+\text{where }w_{f} & = & \frac{|\mathbf{S}_{f}\cdot(\mathbf{x}_{N}-\mathbf{x}_{f})|}{|\mathbf{S}_{f}\cdot(\mathbf{x}_{N}-\mathbf{x}_{f})|+|\mathbf{S}_{f}\cdot(\mathbf{x}_{f}-\mathbf{x}_{C})|}\ \text{(interpolation weights)}\\
+\text{where }D_{C} & = & \sum_{f\in C}\left(1-w_{f}\right)\frac{|\mathbf{S}_{f}|}{|\mathbf{x}_{N}-\mathbf{x}_{C}|^{2}}\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)^{T}
+\end{eqnarray*}
+
+\end_inset
+
+This is the least squares gradient implemented in the OpenFOAM library.
+ Equations (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:departure"
+
+\end_inset
+
+) and (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:PsiDep"
+
+\end_inset
+
+) are substituted in to (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:advectionGauss"
+
+\end_inset
+
+) to give a scheme that is second-order accurate in space and time but not
+ positive definite, equivalent to a Law-Wendroff scheme:
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{C}^{n+1} & \approx & \Psi_{C}^{n}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{up}}^{n}U_{f}}_{\text{explicit upwind}}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\left(\mathbf{x}_{f}\!-\!\mathbf{x}_{\text{up}}\right)\cdot\left(\nabla\Psi^{n}\right)U_{f}}_{\text{spatial corection}}+\underbrace{\frac{\Delta t^{2}}{2V_{C}}\sum_{f\in C}\left(\nabla\cdot\left(\mathbf{u}\Psi^{n}\right)\right)U_{f}}_{\text{temporal correction}}\label{eq:advectionGauss-1}
+\end{eqnarray}
+
+\end_inset
+
+The explicit upwind term does not introduce unbounded solutions.
+ In order for the second-order and divergence correction terms to maintain
+ positivity, they are written as explicit upwind advection using an anti-diffusi
+ve flux, 
+\begin_inset Formula $V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f}$
+\end_inset
+
+, and the scheme is written in two stages:
+\begin_inset Formula 
+\begin{eqnarray}
+\text{explicit diffusive step: }\Psi_{C}^{d} & = & \Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{up}}^{n}U_{f}\\
+\text{explicit correction: }\Psi_{C}^{n+1} & = & \Psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f} & = & \frac{U_{f}}{\Psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi-\frac{\Delta t}{2}\nabla\cdot\left(\Psi\mathbf{u}\right)\right\} \label{eq:antiDfluxExp}
+\end{eqnarray}
+
+\end_inset
+
+and where 
+\begin_inset Formula $\Psi_{\text{vup}}$
+\end_inset
+
+ is 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ in the upwind cell where the upwind direction is defined by the sign of
+ 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+.
+ As 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ is always positive, there is no ambiguity in the sign of 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+.
+ The anti-diffusive flux, 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+, can be calculated iteratively, using first 
+\begin_inset Formula $\Psi^{d}$
+\end_inset
+
+ and subsequent iterations use the most up to date version of 
+\begin_inset Formula $\Psi^{n+1}$
+\end_inset
+
+.
+ Eqn (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:antiDfluxExp"
+
+\end_inset
+
+) is a continuous version of the expression for the anti-diffusive velocity
+ in eqn (13) of 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "SS05b"
+
+\end_inset
+
+.
+ The discretisaions of gradients, divergences and 
+\begin_inset Formula $\Psi_{\text{denom}}$
+\end_inset
+
+ described here give exactly the same expression as 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "SS05b"
+
+\end_inset
+
+ on a uniform structured grid but the treatment of non-uniformity and skewness
+ are slightly different.
+\end_layout
+
+\begin_layout Standard
+The explicit diffusive step has a Courant number limit of one which can
+ be seen by writing the advection as the sum of outward and inward fluxes:
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{C}^{d} & = & \Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}\Psi_{C}^{n}U_{f}+\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\Psi_{N}^{n}|U_{f}|\\
+ & = & \Psi_{C}^{n}\left\{ 1-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\right\} +\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\Psi_{N}^{n}|U_{f}|.
+\end{eqnarray}
+
+\end_inset
+
+
+\begin_inset Formula $\Psi_{C}^{d}$
+\end_inset
+
+ is bounded between 
+\begin_inset Formula $\Psi_{C}^{n}$
+\end_inset
+
+ and all of the 
+\begin_inset Formula $\Psi_{N}^{n}$
+\end_inset
+
+ when the Courant number is less than one where the Courant number on an
+ arbitrary mesh is defined as
+\begin_inset Formula 
+\begin{equation}
+c=\frac{\Delta t}{V_{C}}\sum_{f}|U_{f}|.\label{eq:Courant}
+\end{equation}
+
+\end_inset
+
+For the explicit correction to be positive definite and stable, the anti-diffusi
+ve velocity needs to obey the same Courant number restriction.
+ Considering the case with uniform velocity in one dimension and uniform
+ 
+\begin_inset Formula $\nabla\Psi$
+\end_inset
+
+ and remembering that 
+\begin_inset Formula $\Psi\ge0$
+\end_inset
+
+ and 
+\begin_inset Formula $c\in[0,1]$
+\end_inset
+
+, this is equivalent to
+\begin_inset Formula 
+\begin{eqnarray*}
+c\left(1-c\right)\frac{|\Psi_{C}-\Psi_{N}|}{2\Psi_{\text{denom}}} & \le & 1.
+\end{eqnarray*}
+
+\end_inset
+
+Following 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "SS05b"
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+\Psi_{\text{denom}}=\frac{1}{2}\left(\Psi_{C}+\Psi_{N}+\varepsilon\right)
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\varepsilon$
+\end_inset
+
+ is a small number.
+ This ensures that explicit MPDATA is positive definite.
+ The results presented here use 
+\begin_inset Formula $\varepsilon=10^{-16}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Blended Implicit/Explicit MPDATA
+\end_layout
+
+\begin_layout Standard
+We describe a blended implicit/explicit scheme to be a generalisation of
+ Crank-Nicolson (or trapezoidal implicit) with off-centering 
+\begin_inset Formula $\theta$
+\end_inset
+
+ which can vary in space and is defined on faces (for conservation):
+\begin_inset Formula 
+\begin{equation}
+\Psi_{C}^{n+1}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta\right)\Psi_{f}^{n}+\theta\Psi_{f}^{n+1}\right\} U_{f}.\label{eq:advectionGauss-2}
+\end{equation}
+
+\end_inset
+
+This is second order in time only for 
+\begin_inset Formula $\theta=\frac{1}{2}$
+\end_inset
+
+.
+ We will find the MPDATA anti-diffusive flux that corrects a scheme which
+ is first-order accurate in space and off-centered by 
+\begin_inset Formula $\theta$
+\end_inset
+
+ in time.
+ So the first step, before the MPDATA correction, is:
+\begin_inset Formula 
+\begin{equation}
+\Psi_{C}^{d}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta\right)\Psi_{\text{up}}^{n}+\theta\Psi_{\text{up}}^{d}\right\} U_{f}.\label{eq:thetaUp}
+\end{equation}
+
+\end_inset
+
+To find the second-order approximation of 
+\begin_inset Formula $\Psi_{f}^{n+1/2}$
+\end_inset
+
+, we consider a linear combination of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ at the departure point at time 
+\begin_inset Formula $n$
+\end_inset
+
+ and 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ at the arrival point at time 
+\begin_inset Formula $n+1$
+\end_inset
+
+:
+\begin_inset Formula 
+\begin{equation}
+\Psi_{f}^{n+1/2}=\left(1-\theta\right)\Psi_{d}^{n}+\theta\Psi_{a}^{n+1}\label{eq:thetaPsiFace}
+\end{equation}
+
+\end_inset
+
+where the locations of the departure and arrival points are shown in fig
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:departureArrival"
+
+\end_inset
+
+ and are given by
+\begin_inset Formula 
+\begin{eqnarray*}
+\mathbf{x}_{d} & = & \mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}\\
+\mathbf{x}_{a} & = & \mathbf{x}_{f}+\frac{\Delta t}{2}\mathbf{u}_{f}
+\end{eqnarray*}
+
+\end_inset
+
+The values of 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ and the departure and arrival points can be approximated by
+\begin_inset Formula 
+\begin{eqnarray*}
+\Psi_{d}^{n} & = & \Psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{u}\right)\cdot\nabla\Psi\\
+\Psi_{a}^{n+1} & = & \Psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{u}\right)\cdot\nabla\Psi.
+\end{eqnarray*}
+
+\end_inset
+
+Substituting these into (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaPsiFace"
+
+\end_inset
+
+) gives
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{f}^{n+\nicefrac{1}{2}} & = & \left(1-\theta\right)\Psi_{\text{up}}^{n}+\theta\Psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi^{n}-\left(1-2\theta\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\Psi\label{eq:PsiDep-1-1-1}
+\end{eqnarray}
+
+\end_inset
+
+where 
+\begin_inset Formula $\mathbf{x}_{u}$
+\end_inset
+
+ is the centre of the cell upwind of face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ Therefore the MPDATA correction step is
+\begin_inset Formula 
+\begin{eqnarray*}
+\Psi_{C}^{n+1} & = & \Psi_{C}^{d}+\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\Psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{u}\right)\cdot\nabla\Psi-\left(1-2\theta\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\Psi\right\} 
+\end{eqnarray*}
+
+\end_inset
+
+To avoid either using downwind values or extrapolating from the upwind to
+ the downwind cell, the 
+\begin_inset Formula $1-2\theta$
+\end_inset
+
+ term in 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+ is only used if 
+\begin_inset Formula $\theta\le\frac{1}{2}$
+\end_inset
+
+.
+ If 
+\begin_inset Formula $\theta>\frac{1}{2}$
+\end_inset
+
+, this term changes sign and can lead to instability.
+ A first-order error in time is present if this term is omitted which is
+ acceptable for large Courant numbers.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset External
+	template XFig
+	filename figures/departureArrival.fig
+	display false
+	scale 50
+
+\end_inset
+
+ 
+\begin_inset External
+	template XFig
+	filename figures/departureArrivalLargec.fig
+	display false
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+The volume that is swept through face 
+\begin_inset Formula $f$
+\end_inset
+
+ in one time step and the departure and arrival points, 
+\begin_inset Formula $\mathbf{x}_{d}$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbf{x}_{a}$
+\end_inset
+
+ for small (left) and large (right) Courant numbers.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:departureArrival"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The first step of the implicit/explicit MPDATA 
+\begin_inset Formula $\theta$
+\end_inset
+
+ scheme, eqn (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaUp"
+
+\end_inset
+
+), can be shown to be stable and bounded when 
+\begin_inset Formula 
+\begin{eqnarray}
+\theta\ge1-\frac{1}{c} & \text{and} & \theta\ge0\label{eq:thetaBounds}
+\end{eqnarray}
+
+\end_inset
+
+with the Courant number for an arbitrary mesh, 
+\begin_inset Formula $c$
+\end_inset
+
+, defined as in (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Courant"
+
+\end_inset
+
+).
+ Eqn (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaBounds"
+
+\end_inset
+
+) can be used to set 
+\begin_inset Formula $\theta$
+\end_inset
+
+ based on local values of 
+\begin_inset Formula $c$
+\end_inset
+
+.
+ A degree of safety is added to avoid reaching the stability limits:
+\begin_inset Formula 
+\begin{equation}
+\theta=\max\left\{ 1-\frac{1}{c_{f}+0.2},\ 0\right\} 
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $c_{f}$
+\end_inset
+
+ is the Courant number calculated on faces:
+\begin_inset Formula 
+\begin{eqnarray*}
+c_{f} & = & \frac{2\Delta tu_{n}}{|\mathbf{x}_{C}-\mathbf{x}_{N}|}
+\end{eqnarray*}
+
+\end_inset
+
+where 
+\begin_inset Formula $C$
+\end_inset
+
+ and 
+\begin_inset Formula $N$
+\end_inset
+
+ are the cells either side of 
+\begin_inset Formula $f$
+\end_inset
+
+ and 
+\begin_inset Formula $u_{n}=\mathbf{u}_{f}\cdot\hat{\mathbf{S}}_{f}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Additional Smoothing for Courant numbers 
+\begin_inset Formula $>1$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The anti-diffusive flux, 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+, is (necessarily) divergent and so care is needed to ensure that it does
+ not generate oscillations.
+ Additional spatial variability is introduced to 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+ where 
+\begin_inset Formula $\theta$
+\end_inset
+
+ varies in space which can lead to oscillations.
+ Therefore 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+ is smoothed where 
+\begin_inset Formula $\theta>0$
+\end_inset
+
+ which reduces accuracy only where the Courant number is greater than 0.8.
+ To smooth 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+, first a cell centre anti-diffusive flux is reconstructed from surrounding
+ fluxes:
+\begin_inset Formula 
+\begin{equation}
+\mathbf{v}_{C}=\left(\sum_{f\in C}\mathbf{S}_{f}\mathbf{S}_{f}^{T}\right)^{-1}\sum_{f\in C}\mathbf{S}_{f}V_{f}
+\end{equation}
+
+\end_inset
+
+which is the standard reconstruction of vectors from fluxes implemented
+ in OpenFOAM (
+\begin_inset Formula $\sum_{f\in C}\mathbf{S}_{f}\mathbf{S}_{f}^{T}$
+\end_inset
+
+ is a tensor which can be inverted and pre-calculated for each cell).
+ This is a second-order accurate, least squares reconstruction which reconstruct
+s a uniform vector field exactly.
+ The reconstructed velocity is then interpolated back onto faces and the
+ dot product taken with 
+\begin_inset Formula $\mathbf{S}_{f}$
+\end_inset
+
+ to get a smoothed flux.
+ The smoothed flux is not used at all for 
+\begin_inset Formula $\theta=0$
+\end_inset
+
+ and used exclusively for 
+\begin_inset Formula $\theta\ge\frac{1}{2}$
+\end_inset
+
+:
+\begin_inset Formula 
+\begin{eqnarray}
+V_{f\text{smooth}} & = & s_{f}\left(\mathbf{v}_{Cf}\cdot\mathbf{S}_{f}\right)+\left(1-s_{f}\right)V_{f}\\
+\text{where }s_{f}^{\prime} & = & \min\left\{ 2\theta,\ 1\right\} \nonumber \\
+s_{f} & = & \max_{C\in f}\left\{ \max_{f^{\prime}\in C}s_{f^{\prime}}^{\prime}\right\} 
+\end{eqnarray}
+
+\end_inset
+
+where 
+\begin_inset Formula $C\in f$
+\end_inset
+
+ are the cells either side of face 
+\begin_inset Formula $f$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbf{v}_{Cf}$
+\end_inset
+
+ means 
+\begin_inset Formula $\mathbf{v}$
+\end_inset
+
+ linearly interpolated from cell centre values to faces.
+ 
+\end_layout
+
+\begin_layout Standard
+The MPDATA correction for implicit time stepping can be much larger that
+ the correction for explicit MPDATA so that the Courant number based on
+ the correction can be larger than one.
+ The correction is applied explicitly so the correction must be limited
+ to ensure that Courant numbers associated with the correction are less
+ than one for every cell:
+\begin_inset Formula 
+\begin{eqnarray}
+c_{v} & = & 2\frac{\Delta t}{V_{C}}\sum_{f\in C}|V_{f}|\ \text{(cell centred Courant number based on \ensuremath{V_{f}})}\\
+c_{vf} & = & \max_{C,N}\left\{ c_{v}\right\} \ \text{(face Courant number is max of cells either side)}\\
+V_{f} & = & V_{f}/\max\left\{ 1,\ c_{vf}\right\} \ \text{divide }V_{f}\text{ by the face Courant number if }c_{vf}>1.\label{eq:finalSmoothFlux}
+\end{eqnarray}
+
+\end_inset
+
+This reduces the accuracy but only for Courant numbers greater than 0.8.
+ 
+\end_layout
+
+\begin_layout Subsection
+Linear Equation Solver
+\end_layout
+
+\begin_layout Standard
+The first-order upwind blended implicit/explicit advection creates a sparse,
+ asymmetric matrix 
+\begin_inset Formula $M$
+\end_inset
+
+ with positive elements on the diagonal.
+ To create the matrix equation, (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaUp"
+
+\end_inset
+
+) is re-arranged so that the vector of new 
+\begin_inset Formula $\Psi^{d}$
+\end_inset
+
+ values (
+\begin_inset Formula $\underline{\Psi}^{d}$
+\end_inset
+
+) is a linear combination of old 
+\begin_inset Formula $\Psi^{n}$
+\end_inset
+
+ values (
+\begin_inset Formula $\underline{\Psi}^{n}$
+\end_inset
+
+):
+\begin_inset Formula 
+\begin{eqnarray}
+M\underline{\Psi}^{d} & = & N\underline{\Psi}^{n}\\
+\text{where }M_{ij} & = & \begin{cases}
+1+\frac{\Delta t}{V_{i}}\sum_{f\in i}\theta_{f}\max\left\{ U_{f},0\right\}  & \text{for }i=j\\
+-\frac{\Delta t}{V_{i}}\theta_{f}\max\left\{ -U_{f},0\right\}  & \text{where }f\text{ is between cells }i\text{ and }j
+\end{cases}\\
+\text{and }N_{ij} & = & \begin{cases}
+1-\frac{\Delta t}{V_{i}}\sum_{f\in i}\left(1-\theta_{f}\right)\max\left\{ U_{f},0\right\}  & \text{for }i=j\\
++\frac{\Delta t}{V_{i}}\left(1-\theta_{f}\right)\max\left\{ -U_{f},0\right\}  & \text{where }f\text{ is between cells }i\text{ and }j
+\end{cases}
+\end{eqnarray}
+
+\end_inset
+
+Matrix 
+\begin_inset Formula $N$
+\end_inset
+
+ is of course not created because the right hand vector entries can be evaluated
+ directly.
+ If the flow is divergence free then 
+\begin_inset Formula $\sum_{f\in i}U_{f}=0$
+\end_inset
+
+ which implies that 
+\begin_inset Formula $M$
+\end_inset
+
+ is strictly diagonally dominant.
+ 
+\begin_inset Formula $M$
+\end_inset
+
+ will not be diagonally dominant at row 
+\begin_inset Formula $i$
+\end_inset
+
+ if the volume flux into cell 
+\begin_inset Formula $i$
+\end_inset
+
+ in one time step is greater than the volume flux out in that time step
+ plus the cell volume.
+ This situation is not likely for atmospheric modelling as the atmosphere
+ is low Mach number but it would require either a smaller time step or a
+ matrix solver suitable for non-diagonally dominant matrices.
+ 
+\end_layout
+
+\begin_layout Standard
+The matrix equations generated are solved with the standard OpenFOAM bi-conjugat
+e gradient solver with a diagonal-based Incomplete LU preconditioner.
+ Details of tolerances and iteration counts is given in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:SolverPerformace"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+MPDATA Gauge
+\end_layout
+
+\begin_layout Standard
+The gauge variant of MPDATA can be used with implicit/explicit time stepping
+ exactly as it is used with standard, explicit MPDATA 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "SC86"
+
+\end_inset
+
+.
+ A large value (the gauge) is added to the tracer before advection and then
+ subtracted afterwards.
+ This makes the non-linearity of MPDATA smaller, can increase accuracy but
+ means that MPDATA no longer preserves positivity.
+ In the infinte gauge limit, MPDATA becomes a linear, Lax-Wendroff scheme.
+ The correction step is applied only once using centred differences rather
+ than upwinding 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "KS17"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Flux Corrected Transport (FCT) with Implicit Time Stepping
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Zal79"
+
+\end_inset
+
+ state that their flux corrected transport (FCT) algorithm can be used with
+ implicit time stepping although we have not found examples of this in the
+ literature.
+ In fact, the algorithm as described by 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Zal79"
+
+\end_inset
+
+ does not guarantee monotonicity when used with implicit time stepping.
+ This is because the local bounds for the tracer at each point are assumed
+ to be the value of the tracer at that point and its neighbours for the
+ current and previous time step.
+ This assumes that the local maxima will not be advected by more than one
+ mesh cell in one time step which is no longer the case with implicit time
+ stepping.
+ We therefore define two variants of FCT to work with implicit time stepping.
+ One guarantees monotonicity and the other guarantees boundedness within
+ pre-defined bounds.
+ 
+\end_layout
+
+\begin_layout Standard
+The first step is to calculate the allowable minima and maxima for each
+ cell which we will call 
+\begin_inset Formula $\Psi_{\min}$
+\end_inset
+
+ and 
+\begin_inset Formula $\Psi_{\max}$
+\end_inset
+
+.
+ If we seek boundedness within pre-defined bounds then 
+\begin_inset Formula $\Psi_{\min}$
+\end_inset
+
+ and 
+\begin_inset Formula $\Psi_{\max}$
+\end_inset
+
+ are these bounds.
+ Otherwise 
+\begin_inset Formula $\Psi_{\min}$
+\end_inset
+
+ and 
+\begin_inset Formula $\Psi_{\max}$
+\end_inset
+
+ are the extrema of 
+\begin_inset Formula $\Psi^{d}$
+\end_inset
+
+ (from eqn (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaUp"
+
+\end_inset
+
+) after bounded advection and before correction in the immediate neighbourhood
+ of each cell.
+ This differs from explicit FCT which also uses 
+\begin_inset Formula $\Psi^{n}$
+\end_inset
+
+ which widens the bounds.
+ However with implicit time stepping we cannot expect 
+\begin_inset Formula $\Psi^{n+1}$
+\end_inset
+
+ to be bounded by neighbouring values of 
+\begin_inset Formula $\Psi^{n}$
+\end_inset
+
+.
+ Consequently, the version described here for use with implicit time stepping
+ is more diffusive because of the use solely of 
+\begin_inset Formula $\Psi^{d}$
+\end_inset
+
+ to define the local bounds.
+\begin_inset Formula 
+\begin{eqnarray}
+\text{for cell }C\ \Psi_{\min} & = & \min_{N\in C}\left\{ \Psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C\label{eq:boundsMin}\\
+\text{for cell }C\ \Psi_{\max} & = & \max_{N\in C}\left\{ \Psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C.\label{eq:boundsMax}
+\end{eqnarray}
+
+\end_inset
+
+We next define the maximum allowable amount that each cell can rise or fall
+ by and use the same notation as 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Zal79"
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{eqnarray}
+Q_{p} & = & \Psi_{\max}-\Psi^{d}\\
+Q_{m} & = & \Psi^{d}-\Psi_{\min}.
+\end{eqnarray}
+
+\end_inset
+
+We next need to modify the unbounded MPDATA high order flux corrections
+ (HOC) from the implicit/explicit correction.
+ This is the MPDATA volume flux correction, 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+, from (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:finalSmoothFlux"
+
+\end_inset
+
+) multiplied by 
+\begin_inset Formula $\Psi_{d}$
+\end_inset
+
+ at the upwind cell (upwind defined relative to 
+\begin_inset Formula $V_{f}$
+\end_inset
+
+):
+\begin_inset Formula 
+\begin{equation}
+F_{f\text{HOC}}=\Psi_{d\text{up}}V_{f}.
+\end{equation}
+
+\end_inset
+
+From this we calculate the total high order flux that enters (
+\begin_inset Formula $P_{p}$
+\end_inset
+
+) and leaves (
+\begin_inset Formula $P_{m}$
+\end_inset
+
+) each cell:
+\begin_inset Formula 
+\begin{eqnarray}
+P_{p} & = & -\frac{\Delta t}{V_{C}}\sum_{f\in C}\min\left\{ F_{f\text{HOC}},\ 0\right\} \\
+P_{m} & = & \frac{\Delta t}{V_{C}}\sum_{f\in C}\max\left\{ F_{f\text{HOC}},\ 0\right\} .
+\end{eqnarray}
+
+\end_inset
+
+Next we find the ratios of the allowable total fluxes to the actual high
+ order fluxes:
+\begin_inset Formula 
+\begin{eqnarray}
+R_{p} & = & \begin{cases}
+\min\left\{ 1,\ \frac{Q_{p}}{P_{p}}\right\}  & \text{if }P_{p}>0\\
+0 & \text{otherwise}
+\end{cases}\\
+R_{m} & = & \begin{cases}
+\min\left\{ 1,\ \frac{Q_{m}}{P_{m}}\right\}  & \text{if }P_{m}>0\\
+0 & \text{otherwise.}
+\end{cases}
+\end{eqnarray}
+
+\end_inset
+
+Finally we find the coefficient to multiply 
+\begin_inset Formula $F_{f\text{HOC}}$
+\end_inset
+
+ in order to achieve either a monotonic solution or a solution with the
+ required bounds:
+\begin_inset Formula 
+\begin{eqnarray*}
+F_{f} & = & \begin{cases}
+F_{f\text{HOC}}\min\left\{ R_{pN},\ R_{mC}\right\}  & \text{if }F_{f\text{HOC}}\ge0\\
+F_{f\text{HOC}}\min\left\{ R_{pC},\ R_{mN}\right\}  & \text{otherwise}
+\end{cases}\\
+\text{where} &  & \left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\cdot\mathbf{S}_{f}>0
+\end{eqnarray*}
+
+\end_inset
+
+and cells 
+\begin_inset Formula $C$
+\end_inset
+
+ and 
+\begin_inset Formula $N$
+\end_inset
+
+ are either side of face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ Then the final update is
+\begin_inset Formula 
+\begin{equation}
+\Psi_{C}^{n+1}=\Psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}F_{f}
+\end{equation}
+
+\end_inset
+
+which is monotonic if (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:boundsMin"
+
+\end_inset
+
+) and (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:boundsMax"
+
+\end_inset
+
+) are used to bound 
+\begin_inset Formula $\Psi$
+\end_inset
+
+ and bounded if specific bounds are specified.
+\end_layout
+
+\begin_layout Section
+Advection Test Cases
+\end_layout
+
+\begin_layout Subsection
+Spherical Meshes
+\end_layout
+
+\begin_layout Standard
+Advection test cases using implicit/explicit MPDATA calculated using various
+ meshes are presented.
+ There is no clearly optimal mesh of the sphere for atmospheric modelling
+ (example meshes in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+).
+ Numerical methods need to be designed to allow for one or more of the following
+ features of meshes of the sphere:
+\end_layout
+
+\begin_layout Enumerate
+Latitude-longitude meshes are orthogonal and have uniform resolution following
+ co-ordinate lines but they have severe convergence of mesh lines towards
+ two poles so numerical methods are needed that can cope with very large
+ Courant numbers.
+\end_layout
+
+\begin_layout Enumerate
+Hexagonal and triangular meshes of the sphere are quasi-uniform but they
+ cannot be all three of:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+orthogonal (mesh lines and cell centre to cell centre lines cross at right
+ angles)
+\end_layout
+
+\begin_layout Enumerate
+centroidal (cell centres are at cell centroids)
+\end_layout
+
+\begin_layout Enumerate
+non-skew (cell centre to cell centre lines bisect mesh lines)
+\end_layout
+
+\begin_layout Standard
+meaning that special numerical treatment is needed in order to achieve second-or
+der accuracy.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Quasi-uniform versions of the cubed-sphere are non-orthogonal with large
+ distortions (skewness) at cube edges and corners so numerical methods are
+ needed that maintain accuracy at these distortions.
+ The cubed-sphere in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+ uses the Gnomonic projection 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "RPM96"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Skipped latitude-longitude meshes have factor of two reductions in resolution
+ in the longitudinal direction at a few latitudes to prevent the mesh lines
+ converging.
+ At latitudes where the resolution reduces the meshes can be treated as
+ non-conforming so that two quadrilateral cells are connected to one edge
+ of the adjacent quadrilateral cell, or conforming with two quadrilaterals
+ connected to adjacent, aligned edges of a distorted pentagon.
+ The implementation described here treats them as conforming.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_latLonSkipped_2gauge_adv/latLon_48x24/constant/mesh.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/c1_MPDATA_cubedSphere_2gauge_adv/cube_15/constant/mesh.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Skipped latitude-longitude, 
+\begin_inset Formula $48\times24$
+\end_inset
+
+, 864 cells
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Gnomonic cubed-sphere, 
+\begin_inset Formula $15\times15\times6=1,350$
+\end_inset
+
+ cells 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_HRgrid_2gauge_adv/HRgrid4/constant/mesh.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_tri_2gauge_adv/tri4/constant/mesh.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hexagaonal icosahedron, 642 cells
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Triangular icosahedron, 1280 cells
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Some common meshes of the sphere viewed from above a point at a latitude
+ of 
+\begin_inset Formula $45^{o}$
+\end_inset
+
+.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:grids"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+All of the meshes are decomposed into four domains for parallel processing
+ with MPI.
+\end_layout
+
+\begin_layout Subsection
+Deformational Flow
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset citation
+LatexCommand citet
+key "LSPT12"
+
+\end_inset
+
+ describe deformational flow test cases to demonstrate a number of numerical
+ properties of an advection scheme including order of convergence and monotonici
+ty.
+ We are using the non-divergent wind field which deforms and translates
+ the initial conditions so that the final solution (at 
+\begin_inset Formula $t=T=5$
+\end_inset
+
+) should be identical to the initial conditions (at 
+\begin_inset Formula $t=0$
+\end_inset
+
+).
+ The wind is defined by a stream function, 
+\begin_inset Formula $\psi$
+\end_inset
+
+, based on latitude, 
+\begin_inset Formula $\phi$
+\end_inset
+
+, longitude, 
+\begin_inset Formula $\lambda$
+\end_inset
+
+, time, 
+\begin_inset Formula $t$
+\end_inset
+
+ and the radius of the sphere, 
+\begin_inset Formula $R=1$
+\end_inset
+
+:
+\begin_inset Formula 
+\begin{equation}
+\psi\left(\lambda,\phi,t\right)=\frac{10R}{T}\sin^{2}\left(\lambda-\frac{2\pi t}{T}\right)\cos^{2}\phi\cos\frac{\pi t}{T}-\frac{2\pi R}{T}\sin\phi
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Gaussian Hills
+\end_layout
+
+\begin_layout Standard
+The Gaussian hills initial conditions are infinitely smooth and so can be
+ used to measure the numerical order of convergence.
+ The initial conditions of the tracer, 
+\begin_inset Formula $\Psi_{0}$
+\end_inset
+
+, are given in terms of the three dimensional position vector, 
+\begin_inset Formula $\mathbf{x}$
+\end_inset
+
+, in Caresian co-ordinates:
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
+\text{where }\mathbf{x}_{i} & = & \left(R\cos\phi_{i}\cos\lambda_{i},\ R\cos\phi_{i}\sin\lambda_{i},\ R\sin\phi_{i}\right)\\
+\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
+\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right)
+\end{eqnarray}
+
+\end_inset
+
+The tracer concentrations at 
+\begin_inset Formula $t=2.5$
+\end_inset
+
+ are show in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ calculated on five different meshes of the sphere, all at similar resolutions,
+ and for a 
+\begin_inset Formula $30^{o}$
+\end_inset
+
+ rotated version of the latitude-longitude mesh.
+ The implicit/explicit 
+\begin_inset Formula $\theta$
+\end_inset
+
+ MPDATA is used without flux limiting and without a gauge.
+\end_layout
+
+\begin_layout Standard
+Simulations using all the meshes in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ use a time step of 
+\begin_inset Formula $0.01$
+\end_inset
+
+ and for each mesh the maximum Courant number (over all time) is above one
+ so the simulations would be unstable if a purely explicit scheme were used
+ (although at 
+\begin_inset Formula $t=2.5$
+\end_inset
+
+ on the latitude-longitude mesh the Courant number is everywhere below 0.8).
+ Resolutions and time steps are shown in table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\noindent
+\align center
+\begin_inset Float table
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="20" columns="6">
+<features tabularvalignment="middle">
+<column alignment="left" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Mesh type
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Nominal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+N.
+ cells
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\Delta x$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\Delta t$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Figure
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Latitude-longitude
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $120\times60$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7,080
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3.0^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.02
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $240\times120$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+28,800
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.01
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $480\times240$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+114,720
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.75^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.005
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Skipped latitude-
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $48\times24$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+864
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $7.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $120\times60$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5,310
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3.0^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.02
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+longitude
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $240\times120$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+21,750
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.01
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $480\times240$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+88,470
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.75^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.005
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Cubed-sphere
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $15\times15\times6$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1,350
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $6.4^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $30\times30\times6$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5,400
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $3.2^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.02
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $60\times60\times6$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+21,600
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1.6^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.01
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $120\times120\times6$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+86,400
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.8^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.005
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hexagonal-
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HR4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+642
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $9.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HR6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10,242
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $2.4^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.02
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+icosahedral
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HR7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+40,962
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1.2^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.01
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HR8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+163,842
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.6^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.005
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Triangular-
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Tri4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1,280
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $5.4^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Tri6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20,480
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1.4^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.01
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+icosahedral
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Tri7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+81,920
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.68^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.005
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Tri8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+327,680
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $0.34^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.0025
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+c, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+b
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Resolutions and time steps for deformational advection.
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:dx_dt"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The flow goes to zero at the north and south poles so the convergence of
+ meridians of the latitude-longitude mesh does not lead to large Courant
+ numbers.
+ However when the mesh is rotated by 
+\begin_inset Formula $30^{o}$
+\end_inset
+
+, high winds cross the poles of the mesh so the maximum Courant number goes
+ up to 70 without causing instability, a lack of positivity or visible artefacts
+ in the solution.
+ The large values of Courant number are removed on the rotated, skipped
+ latitude longitude mesh although some values above 0.8 are visible at 
+\begin_inset Formula $t=2.5$
+\end_inset
+
+ just poleward of the change in longitudinal resolution.
+ On the cubed-sphere, the Courant number is largest near the cube corners
+ due to mesh distortions and smaller cell areas.
+ Some mesh imprinting is visible along the cube edges although this does
+ not lead to a lack of positivity.
+ The hexagonal and triangular icosahedral meshes are the most uniform meshes
+ of the sphere and so no locally high Courant numbers are visible at 
+\begin_inset Formula $t=2.5$
+\end_inset
+
+.
+ The results from the hexagonal mesh appear accurate but note that this
+ mesh has higher resolution that the other meshes, which explains the higher
+ Courant number than the triangular mesh.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="10" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLon_c2/latLon_240x120/2.5/Traw.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonRotated_c2/latLon_240x120/2.5/Traw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Full lat-lon, 
+\begin_inset Formula $240\times120$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x=1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Rotated, full lat-lon, 30
+\begin_inset Formula $^{o}$
+\end_inset
+
+, 
+\begin_inset Formula $240\times120$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x=1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+28,800 cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+28,800 cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le70$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonSkipped_c2/latLon_240x120/2.5/Traw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_cubedSphere_c2/cube_60/2.5/Traw.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Skipped, rotated lat-lon, 
+\begin_inset Formula $240\times120$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x\ge1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Cubed-sphere, 
+\begin_inset Formula $60\times60\times6$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x\sim1.5^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+21,750cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c<4.5$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+21,600 cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c<3.1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_HRgrid_c2/HRgrid7/2.5/Traw.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_tri_c2/tri6/2.5/Traw.pdf
+	lyxscale 50
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hexagaonal mesh 7, 
+\begin_inset Formula $\Delta x\sim1.2^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Triangular mesh 6, 
+\begin_inset Formula $\Delta x\sim1.3^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+40,962 cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20,480 cells, 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+ , 
+\begin_inset Formula $c<2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/Traw_T.eps
+	display false
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Deformational flow on the sphere after 2.5 time units.
+ The colours show the piece-wise uniform value of the tracer value in each
+ cell.
+ The contours show the Courant number contoured every 0.2 starting from 
+\begin_inset Formula $c=0.8$
+\end_inset
+
+ (grey) to 
+\begin_inset Formula $c=2$
+\end_inset
+
+ (black) and dotted black contours every 1 for 
+\begin_inset Formula $c\ge3$
+\end_inset
+
+.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:fullDeformation2p5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+MPDATA is, by design, positivity preserving but not bounded above or monotonic.
+ The implicit/explicit MPDATA retains this feature on all of the meshes
+ tested and displayed in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+.
+ The mininum and maximum tracer values for all time steps for each of the
+ meshes in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ are shown at the top of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+.
+ All of the minima remain positive and very close to zero.
+ The maxima decrease due to numerical diffusion but they do not decrease
+ monotonically as expected.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+Maximum and minimum tracer values for all time steps
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/TminMax.eps
+	width 80text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+Maximum and mean (dashed) Courant number for all time steps
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/CoMaxMean.eps
+	width 80text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+Convergence of 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2error.eps
+	width 85text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Diagnostics of the results for the deformational flow of the Gaussian hills
+ with standard implicit/explicit MPDATA (no flux corrected transport and
+ no gauge).
+ Top and middle are diagnostics of the simulations shown in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+.
+ Bottom includes other resolutions.
+ Mesh and time step details in table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The maximum and mean Courant number for each time step for each of the meshes
+ in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ are shown in the middle row of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+.
+ The maximum Courant number for all meshes is greater than one using the
+ time step of 0.01 and is minimum at the middle of the simulation (
+\begin_inset Formula $t=2.5$
+\end_inset
+
+).
+ The maximum Courant number for the rotated latitude-longitude mesh reaches
+ 70 and is always much larger than one which does not appear to significantly
+ reduce the accuracy.
+ The mean Courant numbers (dashed) are below or close to one throughout
+ which helps to maintain accuracy.
+\end_layout
+
+\begin_layout Standard
+The convergence with resolution is shown in the bottom row of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+.
+ The mesh resolutions and time steps for these simulations are given in
+ table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+.
+ Included in this graph is simulations using half the time step and five
+ times the time step for the latitude-longitude mesh (giving maximum Courant
+ number 
+\begin_inset Formula $<1$
+\end_inset
+
+ and 
+\begin_inset Formula $<10$
+\end_inset
+
+) in order show the impact of varying the mean Courant number.
+ Reducing the time step to get 
+\begin_inset Formula $c<1$
+\end_inset
+
+ means that the standard explicit MPDATA is used almost everywhere.
+ Surprisingly, this increases the error slightly.
+ When the Courant number is close to 2, 
+\begin_inset Formula $\theta$
+\end_inset
+
+ is close to 
+\begin_inset Formula $\frac{1}{2}$
+\end_inset
+
+ and the temporal error correction is small.
+ This implies that using second-order implicit/explicit time stepping is
+ more accurate than using first-order time stepping with a correction.
+ However the implicit/explicit time stepping requires a matrix inversion
+ and so is more expensive.
+ The simulation with 
+\begin_inset Formula $c<10$
+\end_inset
+
+ is much less accurate because the temporal correction is not applied for
+ 
+\begin_inset Formula $c>2$
+\end_inset
+
+.
+ However the simulation is still stable and positive definite.
+\end_layout
+
+\begin_layout Standard
+A plot of convergence of the 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution is shown at the bottom of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+ with the resolution to time step ratio kept constant along each line.
+ The resolutions and time steps are shown in table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+.
+ None of the simulations in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+ converge with second-order accuracy in the range of resolutions used although
+ most achieve convergence better than first at the highest resolution.
+ It is expected for second-order advection schemes to converge at less that
+ second order at coarse resolution for this test case, as demonstrated in
+ figures 1 and 2 of 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "LUJ+14"
+
+\end_inset
+
+ who presented results of this test case for a variety of advection schemes
+ on different meshes.
+ Errors saturate at coarse resolution and so the theoretical convergence
+ rate is not achieved.
+ The errors in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+ are similar to the second-order schemes presented in 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "LUJ+14"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Better accuracy at the expense of positivity can be achieved with MPDATA
+ by using the gauge variant which works for the 
+\begin_inset Formula $\theta$
+\end_inset
+
+ implicit/explicit version in the same way as the standard MPDATA 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "SC86"
+
+\end_inset
+
+.
+ 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ errors with resolution for advecting the Gaussian hills with a gauge of
+ 10 are shown in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+.
+ The mesh spacing and times steps are the same as in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+ and are shown in table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+ .
+ These simulations use two MPDATA corrections per time step.
+ With the gauge, minimum tracer values reduce to around -0.1 (top row of
+ fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+) while errors are lower and the order of convergence higher (bottom row
+ of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+).
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+Maximum and minimum tracer values for all time steps
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/TminMaxGauge.eps
+	width 80text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+Convergence of 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2errorGauge.eps
+	width 80text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+Convergence of 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution for easier test case
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2errorWeak.eps
+	width 80text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Diagnostics of the results for the deformational flow of the Gaussian hills
+ with implicit/explicit MPDATA with no flux corrected transport but with
+ a gauge of 10.
+ Other settings the same as fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Rather than going to ever higher resolution in order to achieve the theoretical
+ order of convergence, an easier version of the same test case is simulated.
+ This has the same features but coefficients are chosen to make the deformation
+ smaller and the tracer smoother so that errors do not saturate.
+ The deformational flow field for the easier test case is given by the streamfun
+ction:
+\begin_inset Formula 
+\begin{equation}
+\psi\left(\lambda,\phi,t\right)=\frac{2R}{5}\sin^{2}\left(\lambda-\frac{2\pi t}{5}\right)\cos^{2}\phi\cos\frac{\pi t}{5}-\frac{2\pi R}{5}\sin\phi
+\end{equation}
+
+\end_inset
+
+and the Gaussian hills are given by
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -3\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -3\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
+\text{where }\mathbf{x}_{i} & = & \left(R\cos\phi_{i}\cos\lambda_{i},\ R\cos\phi_{i}\sin\lambda_{i},\ R\sin\phi_{i}\right)\\
+\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
+\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right).
+\end{eqnarray}
+
+\end_inset
+
+Using this configuration, lower resolution meshes, two implicit/explicit
+ MPDATA iterations with a gauge of 10, the convergence with resolution is
+ second order (bottom of fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Subsubsection
+Slotted Cylinders
+\end_layout
+
+\begin_layout Standard
+Deformational advection of slotted cylinders tests the implementation of
+ limiters.
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "LSPT12"
+
+\end_inset
+
+ recommend the same deformational velocity field as for the Gaussian hills
+ with initial tracers defined by:
+\begin_inset Formula 
+\begin{eqnarray}
+\Psi_{0}\left(\lambda,\phi\right) & = & \begin{cases}
+1 & \text{if }r_{i}\le r\text{ and }|\lambda-\lambda_{i}|\ge\frac{r}{6R}\text{ for }i=1,2\\
+1 & \text{if }r_{1}\le r\text{ and }|\lambda-\lambda_{1}|<\frac{r}{6R}\text{ and }\phi-\phi_{1}<-\frac{5}{12}\frac{r}{R}\\
+1 & \text{if }r_{2}\le r\text{ and }|\lambda-\lambda_{2}|<\frac{r}{6R}\text{ and }\phi-\phi_{2}>\frac{5}{12}\frac{r}{R}\\
+0.1 & \text{otherwise}
+\end{cases}\\
+\text{where }\mathbf{x} & = & \left(R\cos\phi\cos\lambda,\ R\cos\phi\sin\lambda,\ R\sin\phi\right)\\
+r & = & R/2,\ r_{i}=|\mathbf{x}-\mathbf{x}_{i}|\\
+\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
+\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right).
+\end{eqnarray}
+
+\end_inset
+
+The tracer fields at the end of the simulations are shown in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+ for all meshes at the highest resolution used and at time steps giving
+ Courant numbers of around 2 (see table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:dx_dt"
+
+\end_inset
+
+).
+ This uses the implicit/explicit 
+\begin_inset Formula $\theta$
+\end_inset
+
+ MPDATA with a guage of 10 and flux corrected transport limited to ensure
+ monotonicity.
+ Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformationSlot5"
+
+\end_inset
+
+ shows that the bounds of the initial conditions are maintained and no new
+ extrema are generated, even on the rotated latitude-longitude mesh where
+ the Courant number reaches 140.
+ The skipped latitude-longitude mesh has sharp jumps in the Courant number
+ which do not cause artefacts in the solution.
+ This is, to our knowledge, the first monotonic and conservative solution
+ of the advection equation using such a large Courant number.
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="10" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLon_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLonRotated_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Full lat-lon, 
+\begin_inset Formula $480\times240$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x=0.75{}^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Rotated 30
+\begin_inset Formula $^{o}$
+\end_inset
+
+, full lat-lon, 
+\begin_inset Formula $480\times240$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x=0.75{}^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+115,200 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+115,200 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le140$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLonSkipped_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_cubedSphere_c2_FCT/cube_120/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Skipped, rotated lat-lon, 
+\begin_inset Formula $480\times240$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x\ge0.75^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Cubed-sphere, 
+\begin_inset Formula $120\times120\times6$
+\end_inset
+
+, 
+\begin_inset Formula $\Delta x\sim0.75^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+88,470 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c<4.5$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+86,400 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c<3.1$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_HRgrid_c2_FCT/HRgrid8/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_tri_c2_FCT/tri7/5/TslotRaw.pdf
+	lyxscale 75
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hexagaonal mesh 8, 
+\begin_inset Formula $\Delta x\sim0.6^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Triangular mesh 7, 
+\begin_inset Formula $\Delta x\sim0.7^{o}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+163,842 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c\le2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+81,920 cells, 
+\begin_inset Formula $\Delta t=0.005$
+\end_inset
+
+ , 
+\begin_inset Formula $c<2$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/TslotRaw_T.eps
+	width 48text%
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Deformational flow on the sphere after 5 time units.
+ The colours show the piecewise uniform value of the tracer value in each
+ cell.
+ The contours show the Courant number contoured every 0.2 starting from 
+\begin_inset Formula $c=0.8$
+\end_inset
+
+ (grey) to 
+\begin_inset Formula $c=2$
+\end_inset
+
+ (black) and dotted black contours every 1 for 
+\begin_inset Formula $c\ge3$
+\end_inset
+
+.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:fullDeformationSlot5"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Solver Performance
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:SolverPerformace"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Solver performance is reported for a selection of simulations using full
+ latitude-longitude meshes as the large inhomogeneity of cell size and large
+ range of Courant numbers leads to an ill conditioned matrix and poor solver
+ performance 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "TB15"
+
+\end_inset
+
+.
+ The full latitude-longitude mesh therefore represents a worst case.
+ Each time step consists of one implicit solve using the standard OpenFOAM
+ bi-conjugate gradient solver with a diagonal-based Incomplete LU preconditioner.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/iterations.eps
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Number of solver iterations per time step for simulations on latitude-longitude
+ meshes.
+ The legend shows if the simulation used a solver tolerance of 
+\begin_inset Formula $10^{-6}$
+\end_inset
+
+ or 
+\begin_inset Formula $10^{-12}$
+\end_inset
+
+.
+ The simulations on rotated latitude-longitude meshes have a mean Courant
+ number of about 1 and a maximum of about 70.
+ The simulations on unrotated meshes have a mean Courant number of around
+ 5 and a maximum of 10.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:nIterations"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The number of iterations of the solver per time step is shown in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:nIterations"
+
+\end_inset
+
+ for various simulations on different resolution latitude-longitude mesh.
+ The first observation about this plot is that the number of iterations
+ is smallest at time 2.5, in the middle of the simulation, for all simulations.
+ This is because the winds speeds are lowest in the middle of the simulation
+ resulting in smaller mean and maximum Courant numbers, as shown in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The first set of simulations used to create fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:nIterations"
+
+\end_inset
+
+ used a rotated latitude-longitude mesh with some very high (~70) localised
+ Courant numbers over the poles of the mesh (fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, top right).
+ The simulations using a solver tolerance of 
+\begin_inset Formula $10^{-6}$
+\end_inset
+
+ are shown with black lines for various resolutions and using a tolerance
+ of 
+\begin_inset Formula $10^{-12}$
+\end_inset
+
+ with blue lines.
+ The tighter tolerance leads to a few more iterations per time step.
+ Higher spatial resolution has little influence on the number of iterations
+ per time step.
+ The tighter tolerance made less than 1% difference to the error norms of
+ the final solution (not shown).
+ The residual for measuring solver convergence is a root mean square, volume
+ weighted error over the whole mesh.
+ Therefore the very large Courant numbers in the small region of the mesh
+ near the poles do not slow down convergence severely.
+ The results in fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+, top right also show that there are no oscillations near the poles so the
+ solver tolerance is strong enough to control oscillations near the poles.
+ 
+\end_layout
+
+\begin_layout Standard
+The second set of simulations used to create fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:nIterations"
+
+\end_inset
+
+ used an un-rotated latitude-longitude mesh but much larger time steps so
+ that the mean Courant number is around 5 and the maximum is 10.
+ These simulations require more iterations per time step to reach the solver
+ tolerance, particularly for the tight tolerance (in green).
+ Again the resolution has a weaker influence on the number of iterations.
+ 
+\end_layout
+
+\begin_layout Itemize
+How expensive are the solvers
+\end_layout
+
+\begin_layout Itemize
+How can we achieve multi-tracer efficiency?
+\end_layout
+
+\begin_layout Itemize
+MPI
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Section*
+Acknowledgements
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "numerics"
+options "abbrvnat"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

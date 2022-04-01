@@ -1,0 +1,182 @@
+Piotr's comments
+
+1. Title is unnecessarily particular. The derived scheme is much more general than implied by the title.  Which journal do you envision? There are 12 references to JCP, so perhaps JCP should be the target. In such a case you do not want to imply the limited  applicability to sole sphere and atmosphere. Consider “An implicit/explicit unstructured-mesh MPDATA for arbitrary Courant numbers” or “….. for arbitrarily long time steps” or  even “An explicit/implicit MPDATA advection”.    I have a separate comment about Theta inside the paper.
+
+HW: I would like the paper to be read by atmopheric modellers who are using different explicit advection schemes to encourage them to think about an implicit version of their scheme. It is also relevant to the MPDATA community. I would have difficulty targetting others as I do not know them.
+
+HW: JCP seems suitable. 
+
+HW: Alternative title:
+"Implicit/explicit MPDATA advection for arbitrary Courant numbers and any mesh"
+
+"Unstructured mesh" is often used to mean triangular. 
+
+2. Re polar filtering: Actually, there were recently substantial developments in this direction [Zhang et al., JCP, 376 (2019) 276-294, and the references therein] that appear promising. 
+
+HW. Cited ZSL+19.
+
+3. In case you are thinking about JCP, I would add reference to ALE methods and some high-impact JCP papers (e.g., Hirt).  Also, quasi unifiorm meshes do provide remedy but lat-lon coordinates have substantial advantages, and if one would come with a suitable advection scheme then this could move community back to regular grids. 
+
+HW. Cited HAC97
+
+4. There is a newer review Smolarkiewicz IJNMF 2006, that people seem to like.
+
+HW: Nice paper, but I found that I didn't need to refer to this paper to explain or understand MPDATA. 
+
+5. do you mean “no new extrema”?
+
+I would also add that conservative implicit upwind scheme is rutinely used in cloud models to calculate the advection of rain. The buty of rain is that it always falls in one direction, upon which the implicit upwind is easy. The drowback of this is that positivity at n+1 implies the positivity at n, but not vice versa.  If I remember correctly, Bruno Sportisse wrote a book about modelling the air pollution, and in one of its chapters he elaborates on generalizations of such upwinding to arbitrary directional implicit schemes.
+
+HW: I don't have access to Sportisse's book. I cannot find any suitable publications about treating precipitation fallout implicitly (including Grabowski and Smolarkiewicz pulications). I think that it is more relevant to reference the mathematical and engineering literature about treating advection implicitly. I should include more of this literature, particularly Helen Yee 
+https://www.sciencedirect.com/science/article/pii/0021999187900490
+
+First-order upwind with backward Euler is TVD. Proof in section 6 often S. Gottlieb, C.-W. Shu, and E. Tadmor. Strong stability-preserving high-order time discretization methods. SIAM review, 43(1):89–112, 2001
+
+I have added some more discussion of the implicit TVD literature.
+
+6. After eqn 11: Shouldn’t this be “less than two”? See, eq. (A10) and the accompanying discussion in Smolar&Szmelter 2005.
+
+HW: Actually I just want to show that it preserves positivity for divergent flows rather than convexity for non-divergent flows. So c<1 is the limit. I need to re-word and cite SS05.
+
+7. Eqn 13: I would use epsilon and in the text explain that it is a small constant e.g. 10^{-16}. 
+
+FYI: in principle, epsilon should be normalised according to the characteristic magnitude of the advected field, unless the advective transport is done is a dimensionless form. Routinely, we do not do such a normalisation, but use a small constant specified arbitrarily.
+
+HW: agreed.
+
+8. Section 2.2: I am aware of the name “theta scheme” (~9000 entires on google) but in my opinion it is unfortunate jargon (e.g., consider that you advect potential temperature). Instead of calling it theta, one could refer to a “weighted average scheme” (or something in this spirt) as it coveys a concept, and then add in parnthesis “(sometime referred to as the theta scheme)”
+
+HW: I have extended to use of "theta scheme" to mean variable theta. The variable theta adds considerable complexity, lower accuracy and scope for oscillations. The section heading could be:
+"MPDATA as a blended implicit/explicit scheme".
+
+9. End of section 2.3: If my understanding is correct (see the sticky note at the bottom of page 5), then this translates to C < 0.4 in standard notations of Cartesian grids. Is this right?
+
+HW. NO. c<0.8. Equivalent to SS05 appx A.1.
+
+10. Section 2.4: I presume 10 assumes that the transported field is about 1. This gauge is not very large. Such an explicit constant addition compares well with the infinite one at about const=100 value. Also, when using explicit constant addition and the field of a variable sign, one should decompose Psi into the non-negative Psi^+=max(Psi,0) and non-positve Psi^- = min(Psi,0), transport them separately, and then compose them back. This preserves symmetries near zeros, but doubles the cost of advection. This is the reason why infinite gauge is derived as a limit at c-> oo. You do not need to derive the formal gauge for this paper, but the paper should ackonwledge that it uses an approximate infinite gauge, to not confuse the reader. 
+
+HW: I would like to repeat the simulations that use a gauge to use the infinite gauge with no upwinding in the anti-diffusive correction (ie LW). 
+
+11. Section 2.5: FYI: in the published MPDATA papers with my collegues we typically refer to limiters “in the spirt of FCT.” This is because for the MPDATA we do not limit fluxes but the antidiffusive velocites. For infinite-gauge MPDATA we are closer to the standard FCT. Still, we apply the concepts of FCT but customized to MPDATA schemes. 
+
+HW: This sounds like a trivial distinction. The fluxes are just the anti-diffusive velocities multiplied by Psi_up. So does it make any difference which one you consider to be limited?
+
+12: End of section 2: Perhaps I missed it, but I do not recall seeing yet any text regarding matrix inversion or solving an elliptic problem. However, as it is an inherent part of the implicit advection,  it should be discussed (or at least announced) together with the design of the scheme.
+
+HW: Yes, I must do this.
+
+13. How about “mesh” rather than “grid”? According to dictionaries grid  implies rectangular connectivity, whereas mesh is a more general term; i.e., every grid is a mesh but not vice versa. So, to be precise, none of the meshes shown in the figure is a proper grid. Pure longitude-latitdue mesh is a grid because it is isomorphic with a  Cartesian grid.
+
+HW: Yup. "Grid", "implicit" and explicit have too many meanings in modelling. A grid is also a function space (ie A-grid/C-grid).
+
+14. Section 3.1: This paragraph should include a straightforward statement that in this paper several meshes are employed and these are 1-4. Otherwise the reader (who already forgot the title) wonders what is the purpose of this 1 to 4 discussion. Such a sentence appears now only at the very end of this subsection. 
+
+HW: Thanks. Done
+
+15. Near end of 3.2.1: RE formal convergence order: I presume you mean that of the assymptotic convergence rate.   BTW, are you converging along the lines of fixed Courant number? 
+
+HW: I replaced "formal" with "theoretical". I have now clarified in the text that the lines on the graph have the same ratio of spatial to temporal resolution.
+
+16. Section 3.3: I do not think you need flow past orography in this paper. 
+It is all about advection, but flow over topography has much more than advection. Also, there is plenty of people working with regular grids on Cartesian domains who could benefit from this development.
+
+If it were my paper, I would start with simple 1D and 2D tests, document all the important properties of the scheme there, and show the sphere only at the end. Did you do any 3D problem? 
+
+HW: I think that the deformational flow on the sphere test cases are important and I have already skipped some of them. 
+1D is too easy because you do not get the Courant number varying in space.
+I could use a planar test case to show the order of convergence but it seems simpler to use the deformational flow on the sphere.
+I want to give enough space to showing that this works on different meshes of the sphere.
+
+It would be good to do a 3D problem. KUJ14
+Q. J. R. Meteorol. Soc. 140: 1279–1293, April 2014 B DOI:10.1002/qj.2208
+Dynamical core model intercomparison project: Tracer transport test cases.
+However these look difficult to set up and challenging. Would it be worth setting up something simpler that still shows the properites of MPDATA in 3D? How to make the velocity field divergence free in 3D? Need a 3D stream function. The above paper doesn't supply a 3D stream function.
+
+Christian's comments
+
+- Page 3, Section 2.1, first sentence: Even though the explicit MPDATA in Section 2.1 follows the basic principles of the previous scheme of (e.g. S&SJCP2005, K&SJCP2017), the presented derivation is quite different and innovative! You could change the first sentence of Section 2.1 to sth like: “The description of the explicit scheme is consistent with basic MPDATA principles, but introduces a novel derivation based on a flux-form semi-Lagrangian method and assuming an arbitrary grid in Cartesian co-ordinates.”
+
+HW: Done, but I have kept the final clause of the original sentence "rather than using co-ordinate transforms".
+
+- Page 4, Eq. 3: Of course, in this paper u_f at time n+1/2 is prescribed by analytical functions, in general do you agree that this can be obtained simply by linear extrapolation from n-1 and n time levels?
+
+HW: I have put 
+"In this paper the wind is prescribed. In a more complete model, $\mathbf{u}_{f}^{n+\nicefrac{1}{2}}$ would be evaluated from velocities at known positions and times."
+to be general. Is it clear?
+
+- Page 4, Eq. 4: This equation kept me busy. For the final version it would be useful to add some more discussion. I see a benefit in relating Eq. 4 to the usual derivation based on the modified equation analysis of MPDATA (I need to think about this more, and we can talk about it). I also wondered what is the optimal gradient and divergence evaluation here, should this be on cell C or cell “up” or some average to face?
+
+HW: I have added after eqn (9):
+Eqn (9) is a continuous version of the expression for the anti-diffusive velocity in eqn (13) of Smolarkiewicz and Szmelter (2005). The discretisaions of gradients, divergences and \Psi_{\text{denom}} described here give exactly the same expression as Smolarkiewicz and Szmelter (2005) on a uniform structured grid but the treatment of non-uniformity and skewness are slightly different.
+
+As a side note, in FVM (as introduced in KS2017), we got entirely rid of the gradients in the anti-diffusive velocity in order to achieve compatibility with mass continuity when solving compressible equations (i.e. mass fluxes from mass continuity are used in the solution of the scalar transport of u,v,w,theta,etc, but only face-normal components are available on general (i.e. non-rectangular) meshes, which means one can consistently compute a flux divergence term but not a gradient due to missing consistent tangential component. We can neglect this in the present paper, but for FVM this would be required to achieve accurate solution in the context of compressible equations.
+
+HW: I would prefer to use the flux version. It is less stable for Courant numbers near 1 and where the off centering varies in space so I don't use it. The flux version bothers me a bit. There is a divergence of a divergence in the correction. So you have to calculate a divergence and then interpolate onto faces. 
+
+- Page 5, Eq. 6: Similarly, here we may want to explain how the FFSL-derived form relates to the standard Eulerian modified equation analysis. In the latter, we get a mesh-skewness spatial error term of the upwind scheme on meshes other than median-dual; see e.g. KS2017 Eq. 5; in
+FVM we use exclusively the median-dual approach about the octahedral Gaussian or HealPix (new) meshes such that this error term vanishes). The derived error terms are also not exactly the same here, so we may consider extending the discussion somewhat in terms of FFSL vs Eulerian. In the previous MPDATA, important error terms contain a derivative along the edge
+connecting neighboring vertices (btw assuming a vertex-centered formulation).
+
+HW: See above comment. I have tried to stay continuous as far as possible in the derivation. Then gradients are evaluated which can account for skewness.
+
+- Page 6, Section 2.2: Very nice section as well! I wonder if we should consider extending the graphic in Fig. 2 for Courant numbers > 1? Would be nice but not crucial if complicated and time is short.
+
+HW: Done
+
+- Page 7, Section 2.3: First I thought the extra filtering is somewhat unsatisfactory, but I was surprised how little damage this causes with the restriction to high Courant numbers, it seems to do the job!
+
+HW: I am unhappy about the arbitraryness of the filtering. It is not guaranteed to lead to stable solutions. I have spent a long time fiddling but it is not robust.
+
+- Page 8, Section 2.4: The MPDATA gauge may be approached by adding the large constant. However, this is not the infinite-gauge we usually use in FVM. The infinite-gauge does not use an upwind scheme for the anti-diffusive step and there is only one anti-diffusive step (in contrast to the standard sign-preserving version which can have multiple corrective steps but usually we never use that anyhow). You can find a comparison of the standard and infinite-gauge versions on unstructured meshes in KS2017 (Eqs. 25+26 versus Eqs. 31+32). My guess is that the proper infinite-gauge would provide better results, but this is not crucial for the present paper. We just need to add a comment that the applied gauge is not the usual infinite-gauge form.
+
+HW: I am re-running with the infinite guage version and with one iteration. The results are a tiny bit better (so far).
+
+- Page 8, Section 2.5: The discussion and developed approach for FCT with implicit time stepping nicely reverts back from limit Psi_d to the neighbours where Courant number <=1, do I see this correctly?
+
+HW: No, I am afraid not. You would need to decide for each cell what bounds to use based on the local Courant number. I haven't coded this. I guess that you could use the explicit version for a cell if all of the faces of that cell were treated explicitly.
+
+- Section 3: I think the deformational flow and slotted cylinder tests are sufficient together with the presented analysis. The possible magnitude of stable Courant numbers is really impressive, have not seen this before (the largest Courant numbers I have ever seen with the SL advection
+in the IFS was 23, but only in the vertical direction).
+
+HW. Thanks. Agreed. Piotr mentioned a 3D test which would be great but time consuming to set up if it included any meaningful challenges such as the DCMIP test cases.
+
+- Page 14, Figure 4: The large Courant numbers may be highlighted in a separate plot using shaded colours, but again this is additional work which is not required. Also, maximum Courant numbers as a function of time are also already provided in Fig. 5.
+
+HW: Large Courant numbers are contours in figs 4,7. Maybe the contours need to be more legible?
+
+- Page 15: “These simulations use two MPDATA corrections per time step”. As mentioned before, the usual infinite-gauge uses only one corrective step, so it is just important to explain in Section 2.4 that gauge vs inf-gauge, as already addressed above.
+
+HW: Re-running with infinite gauge and 1 iteration. Difference in 4th DP of l2 error norm.
+
+- Page 20, Section 3.4: This will be highly interesting section and definitely required.
+
+
+Additional minor comments:
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+Page 1, 2 nd paragraph, 1 st sentence: We could add “spatial” to write “...cruel where spatial
+resolution..”.
+Page 2, list: 8. Conservation
+Page 2: Haven’t found the time, but I can complement a bit the MPDATA background, just a
+few aspects (not the most important thing though, already really nice).
+Page 3, background on implicit time stepping: COSMO uses implicit vertical advection for
+some time, I will provide you a reference to that. Not sure if we should add that a reference to
+implicit advection for sedimentation in cloud microphysics, probably not important. In the
+second paragraph remove one “new” from “new new”.
+Page 6, Section 2.2: First sentence should be shortened.
+Page 6, Section 2.2, 2 nd paragraph: “ante-diffusive” -> “anti-diffusive”.
+Page 6, Eq. before (17): x_u should probably be x_up.
+Page 7, last equation: u_n is not used elsewhere so u_f \dot S_f may be directly inserted in the
+expression for c_f.
+Page 8, paragraph before Eq. (23): “larger that the correction” -> “larger than the correction”
+Page 15, paragraph 5: “...at less that second...” -> “...at less than second...”
+Not sure if we should say “sign-preserving” instead of “positivity”, I’m fine with both.
