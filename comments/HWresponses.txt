@@ -1,15 +1,15 @@
+Having spent the past enjoyable six months as a full time university teacher, I am now returning to the wonderful world of implicit MPDATA. Apologies for the delay. I am looking at where I got to responding to your comments and other improvements that might be made to the paper.
+
 Piotr's comments
 
 1. Title is unnecessarily particular. The derived scheme is much more general than implied by the title.  Which journal do you envision? There are 12 references to JCP, so perhaps JCP should be the target. In such a case you do not want to imply the limited  applicability to sole sphere and atmosphere. Consider “An implicit/explicit unstructured-mesh MPDATA for arbitrary Courant numbers” or “….. for arbitrarily long time steps” or  even “An explicit/implicit MPDATA advection”.    I have a separate comment about Theta inside the paper.
-
-HW: I would like the paper to be read by atmopheric modellers who are using different explicit advection schemes to encourage them to think about an implicit version of their scheme. It is also relevant to the MPDATA community. I would have difficulty targetting others as I do not know them.
 
 HW: JCP seems suitable. 
 
 HW: Alternative title:
 "Implicit/explicit MPDATA advection for arbitrary Courant numbers and any mesh"
 
-"Unstructured mesh" is often used to mean triangular. 
+"Unstructured mesh" is often used to mean triangular. "Arbitrarily structured" I think is more general.
 
 2. Re polar filtering: Actually, there were recently substantial developments in this direction [Zhang et al., JCP, 376 (2019) 276-294, and the references therein] that appear promising. 
 
@@ -21,7 +21,7 @@ HW. Cited HAC97
 
 4. There is a newer review Smolarkiewicz IJNMF 2006, that people seem to like.
 
-HW: Nice paper, but I found that I didn't need to refer to this paper to explain or understand MPDATA. 
+HW: Are you referring to "MPDATA error estimator for mesh adaptivity", Szmelter and Smolarkiewicz, 2006? I think that the current set of MPDATA papers that are referenced are the minimum complete set in order to provide the evidence for what is said in this manuscript.
 
 5. do you mean “no new extrema”?
 
@@ -36,7 +36,9 @@ I have added some more discussion of the implicit TVD literature.
 
 6. After eqn 11: Shouldn’t this be “less than two”? See, eq. (A10) and the accompanying discussion in Smolar&Szmelter 2005.
 
-HW: Actually I just want to show that it preserves positivity for divergent flows rather than convexity for non-divergent flows. So c<1 is the limit. I need to re-word and cite SS05.
+HW: I really cannot see how A10 follows from A9 in Smolar&Szmelter 2005 and in fact, surely one dimensional finite difference with constant velocity and a uniform grid is a counter example. The forward-time, backward-space 1D FD scheme requires Courant number between 0 and 1 for convexity.
+
+Note also that I only want to show positivity for divergent flows, not convexity for non-divergent flows.
 
 7. Eqn 13: I would use epsilon and in the text explain that it is a small constant e.g. 10^{-16}. 
 
@@ -51,7 +53,7 @@ HW: I have extended to use of "theta scheme" to mean variable theta. The variabl
 
 9. End of section 2.3: If my understanding is correct (see the sticky note at the bottom of page 5), then this translates to C < 0.4 in standard notations of Cartesian grids. Is this right?
 
-HW. NO. c<0.8. Equivalent to SS05 appx A.1.
+HW. No. c<0.8. Equivalent to SS05 appx A.1.
 
 10. Section 2.4: I presume 10 assumes that the transported field is about 1. This gauge is not very large. Such an explicit constant addition compares well with the infinite one at about const=100 value. Also, when using explicit constant addition and the field of a variable sign, one should decompose Psi into the non-negative Psi^+=max(Psi,0) and non-positve Psi^- = min(Psi,0), transport them separately, and then compose them back. This preserves symmetries near zeros, but doubles the cost of advection. This is the reason why infinite gauge is derived as a limit at c-> oo. You do not need to derive the formal gauge for this paper, but the paper should ackonwledge that it uses an approximate infinite gauge, to not confuse the reader. 
 

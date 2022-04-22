@@ -508,7 +508,7 @@ https://github.com/AtmosFOAM/
 
 \end_inset
 
-).
+) compiled with OpenFOAM7.
  
 \end_layout
 
@@ -520,7 +520,7 @@ Explicit MPDATA on an Arbitrary Mesh
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -528,7 +528,6 @@ status open
 \begin_inset External
 	template XFig
 	filename figures/cells.fig
-	display false
 	scale 50
 
 \end_inset
@@ -635,7 +634,7 @@ key "SS05b"
  than using co-ordinate transforms.
  We will describe MPDATA for solving the linear advection equation for advected
  quantity 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  with velocity field 
@@ -645,7 +644,7 @@ key "SS05b"
 :
 \begin_inset Formula 
 \begin{equation}
-\frac{\partial\Psi}{\partial t}+\nabla\cdot\left(\mathbf{u}\Psi\right)=0.\label{eq:linearAdvection}
+\frac{\partial\psi}{\partial t}+\nabla\cdot\left(\mathbf{u}\psi\right)=0.\label{eq:linearAdvection}
 \end{equation}
 
 \end_inset
@@ -666,17 +665,17 @@ This is solved using Gauss's divergence theorem on an arbitrary mesh to
  apart:
 \begin_inset Formula 
 \begin{equation}
-\Psi_{C}^{n+1}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{f}^{n+\nicefrac{1}{2}}U_{f}\label{eq:advectionGauss}
+\psi_{C}^{n+1}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{f}^{n+\nicefrac{1}{2}}U_{f}\label{eq:advectionGauss}
 \end{equation}
 
 \end_inset
 
 where 
-\begin_inset Formula $\Psi_{C}$
+\begin_inset Formula $\psi_{C}$
 \end_inset
 
  is the cell mean value of 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  in cell 
@@ -700,11 +699,11 @@ where
 \end_inset
 
 , 
-\begin_inset Formula $\Psi_{f}^{n+\nicefrac{1}{2}}$
+\begin_inset Formula $\psi_{f}^{n+\nicefrac{1}{2}}$
 \end_inset
 
  is the value of 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  at face 
@@ -753,7 +752,7 @@ reference "fig:cells"
 
 .
  In this derivation of MPDATA, 
-\begin_inset Formula $\Psi_{f}$
+\begin_inset Formula $\psi_{f}$
 \end_inset
 
  is evaluated at the departure point of the face centre at time 
@@ -813,32 +812,32 @@ reference "fig:cells"
 
  would be evaluated from velocities at known positions and times.
  The dependent variable, 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
 , is evaluated at the departure point using the upwind cell centre value
  of 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
 , the gradient of 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  and the velocity divergence:
 \begin_inset Formula 
 \begin{equation}
-\Psi_{f}^{n+\nicefrac{1}{2}}=\Psi_{d}^{n}=\Psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi^{n}-\frac{\Delta t}{2}\Psi_{\text{up}}^{n}\nabla\cdot\mathbf{u}+O\left(\Delta x^{2},\Delta t^{2}\right)\label{eq:PsiDep}
+\psi_{f}^{n+\nicefrac{1}{2}}=\psi_{d}^{n}=\psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi^{n}-\frac{\Delta t}{2}\psi_{\text{up}}^{n}\nabla\cdot\mathbf{u}+O\left(\Delta x^{2},\Delta t^{2}\right)\label{eq:PsiDep}
 \end{equation}
 
 \end_inset
 
 where 
-\begin_inset Formula $\Psi_{\text{up}}$
+\begin_inset Formula $\psi_{\text{up}}$
 \end_inset
 
  is the value of 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  in the cell upwind of face 
@@ -847,7 +846,7 @@ where
 
 .
  
-\begin_inset Formula $\nabla\Psi$
+\begin_inset Formula $\nabla\psi$
 \end_inset
 
  can be calculated in cells (
@@ -858,17 +857,17 @@ where
 ion:
 \begin_inset Formula 
 \begin{equation}
-\nabla\Psi=\sum_{f\in C}\mathbf{g}_{f}\left(\Psi_{N}-\Psi_{C}\right)
+\nabla\psi=\sum_{f\in C}\mathbf{g}_{f}\left(\psi_{N}-\psi_{C}\right)
 \end{equation}
 
 \end_inset
 
 where 
-\begin_inset Formula $\Psi_{N}$
+\begin_inset Formula $\psi_{N}$
 \end_inset
 
  is 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  in the neighbour of cell 
@@ -923,7 +922,7 @@ reference "eq:advectionGauss"
  positive definite, equivalent to a Law-Wendroff scheme:
 \begin_inset Formula 
 \begin{eqnarray}
-\Psi_{C}^{n+1} & \approx & \Psi_{C}^{n}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{up}}^{n}U_{f}}_{\text{explicit upwind}}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\left(\mathbf{x}_{f}\!-\!\mathbf{x}_{\text{up}}\right)\cdot\left(\nabla\Psi^{n}\right)U_{f}}_{\text{spatial corection}}+\underbrace{\frac{\Delta t^{2}}{2V_{C}}\sum_{f\in C}\left(\nabla\cdot\left(\mathbf{u}\Psi^{n}\right)\right)U_{f}}_{\text{temporal correction}}\label{eq:advectionGauss-1}
+\psi_{C}^{n+1} & \approx & \psi_{C}^{n}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{up}}^{n}U_{f}}_{\text{explicit upwind}}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\left(\mathbf{x}_{f}\!-\!\mathbf{x}_{\text{up}}\right)\cdot\left(\nabla\psi^{n}\right)U_{f}}_{\text{spatial corection}}+\underbrace{\frac{\Delta t^{2}}{2V_{C}}\sum_{f\in C}\left(\nabla\cdot\left(\mathbf{u}\psi^{n}\right)\right)U_{f}}_{\text{temporal correction}}\label{eq:advectionGauss-1}
 \end{eqnarray}
 
 \end_inset
@@ -935,22 +934,23 @@ ve flux,
 \begin_inset Formula $V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f}$
 \end_inset
 
-, and the scheme is written in two stages:
+, which transforms the scheme from Lax-Wendroff to MPDATA and is written
+ in two stages:
 \begin_inset Formula 
 \begin{eqnarray}
-\text{explicit diffusive step: }\Psi_{C}^{d} & = & \Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{up}}^{n}U_{f}\\
-\text{explicit correction: }\Psi_{C}^{n+1} & = & \Psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{vup}}^{d}V_{f}\\
-\text{where }V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f} & = & \frac{U_{f}}{\Psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi-\frac{\Delta t}{2}\nabla\cdot\left(\Psi\mathbf{u}\right)\right\} \label{eq:antiDfluxExp}
+\text{explicit diffusive step: }\psi_{C}^{d} & = & \psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{up}}^{n}U_{f}\\
+\text{explicit correction: }\psi_{C}^{n+1} & = & \psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f} & = & \frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi-\frac{\Delta t}{2}\nabla\cdot\left(\psi\mathbf{u}\right)\right\} \label{eq:antiDfluxExp}
 \end{eqnarray}
 
 \end_inset
 
 and where 
-\begin_inset Formula $\Psi_{\text{vup}}$
+\begin_inset Formula $\psi_{\text{vup}}$
 \end_inset
 
  is 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  in the upwind cell where the upwind direction is defined by the sign of
@@ -960,7 +960,7 @@ and where
 
 .
  As 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  is always positive, there is no ambiguity in the sign of 
@@ -973,11 +973,11 @@ and where
 \end_inset
 
 , can be calculated iteratively, using first 
-\begin_inset Formula $\Psi^{d}$
+\begin_inset Formula $\psi^{d}$
 \end_inset
 
  and subsequent iterations use the most up to date version of 
-\begin_inset Formula $\Psi^{n+1}$
+\begin_inset Formula $\psi^{n+1}$
 \end_inset
 
 .
@@ -998,7 +998,7 @@ key "SS05b"
 
 .
  The discretisaions of gradients, divergences and 
-\begin_inset Formula $\Psi_{\text{denom}}$
+\begin_inset Formula $\psi_{\text{denom}}$
 \end_inset
 
  described here give exactly the same expression as 
@@ -1009,50 +1009,62 @@ key "SS05b"
 \end_inset
 
  on a uniform structured grid but the treatment of non-uniformity and skewness
- are slightly different.
+ are slightly different here.
 \end_layout
 
 \begin_layout Standard
-The explicit diffusive step has a Courant number limit of one which can
- be seen by writing the advection as the sum of outward and inward fluxes:
+The explicit diffusive step has a Courant number limit of half for a divergent
+ velocity field and one for a non-divergent velocity field.
+ This can be seen by writing the advection as the sum of outward and inward
+ fluxes:
 \begin_inset Formula 
 \begin{eqnarray}
-\Psi_{C}^{d} & = & \Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}\Psi_{C}^{n}U_{f}+\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\Psi_{N}^{n}|U_{f}|\\
- & = & \Psi_{C}^{n}\left\{ 1-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\right\} +\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\Psi_{N}^{n}|U_{f}|.
+\psi_{C}^{d} & = & \psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}\psi_{C}^{n}U_{f}+\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\psi_{N}^{n}|U_{f}|\\
+ & = & \psi_{C}^{n}\left\{ 1-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\right\} +\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\psi_{N}^{n}|U_{f}|.
 \end{eqnarray}
 
 \end_inset
 
-
-\begin_inset Formula $\Psi_{C}^{d}$
+For a divergent velocity field, 
+\begin_inset Formula $\psi_{C}^{d}$
 \end_inset
 
- is bounded between 
-\begin_inset Formula $\Psi_{C}^{n}$
+ is positive when the term in curly brackets is non-negative which happens
+ when 
+\begin_inset Formula $\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\le1$
 \end_inset
 
- and all of the 
-\begin_inset Formula $\Psi_{N}^{n}$
-\end_inset
-
- when the Courant number is less than one where the Courant number on an
- arbitrary mesh is defined as
+.
+ The Courant number on an arbitrary mesh is defined as
 \begin_inset Formula 
 \begin{equation}
-c=\frac{\Delta t}{V_{C}}\sum_{f}|U_{f}|.\label{eq:Courant}
+c=\frac{1}{2}\frac{\Delta t}{V_{C}}\sum_{f}|U_{f}|\label{eq:Courant}
 \end{equation}
 
 \end_inset
 
+so a Courant number limit of half guarantees positivity.
+ For a non-divergent velocity field:
+\begin_inset Formula 
+\begin{equation}
+\sum_{U_{f}>0}U_{f}=\sum_{U_{f}<0}|U_{f}|=c
+\end{equation}
+
+\end_inset
+
+so the solution is bounded when the Courant number is less than one.
+\end_layout
+
+\begin_layout Standard
 For the explicit correction to be positive definite and stable, the anti-diffusi
 ve velocity needs to obey the same Courant number restriction.
  Considering the case with uniform velocity in one dimension and uniform
  
-\begin_inset Formula $\nabla\Psi$
+\begin_inset Formula $\nabla\psi$
 \end_inset
 
  and remembering that 
-\begin_inset Formula $\Psi\ge0$
+\begin_inset Formula $\psi\ge0$
 \end_inset
 
  and 
@@ -1062,7 +1074,7 @@ ve velocity needs to obey the same Courant number restriction.
 , this is equivalent to
 \begin_inset Formula 
 \begin{eqnarray*}
-c\left(1-c\right)\frac{|\Psi_{C}-\Psi_{N}|}{2\Psi_{\text{denom}}} & \le & 1.
+c\left(1-c\right)\frac{|\psi_{C}-\psi_{N}|}{2\psi_{\text{denom}}} & \le & 1.
 \end{eqnarray*}
 
 \end_inset
@@ -1077,7 +1089,7 @@ key "SS05b"
 
 \begin_inset Formula 
 \begin{equation}
-\Psi_{\text{denom}}=\frac{1}{2}\left(\Psi_{C}+\Psi_{N}+\varepsilon\right)
+\psi_{\text{denom}}=\frac{1}{2}\left(\psi_{C}+\psi_{N}+\varepsilon\right)
 \end{equation}
 
 \end_inset
@@ -1097,6 +1109,13 @@ where
 
 \begin_layout Subsection
 Blended Implicit/Explicit MPDATA
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:MPDATA_theta"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -1108,7 +1127,7 @@ We describe a blended implicit/explicit scheme to be a generalisation of
  which can vary in space and is defined on faces (for conservation):
 \begin_inset Formula 
 \begin{equation}
-\Psi_{C}^{n+1}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta\right)\Psi_{f}^{n}+\theta\Psi_{f}^{n+1}\right\} U_{f}.\label{eq:advectionGauss-2}
+\psi_{C}^{n+1}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta_{f}\right)\psi_{f}^{n}+\theta_{f}\psi_{f}^{n+1}\right\} U_{f}.\label{eq:advectionGauss-2}
 \end{equation}
 
 \end_inset
@@ -1127,124 +1146,20 @@ This is second order in time only for
  So the first step, before the MPDATA correction, is:
 \begin_inset Formula 
 \begin{equation}
-\Psi_{C}^{d}=\Psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta\right)\Psi_{\text{up}}^{n}+\theta\Psi_{\text{up}}^{d}\right\} U_{f}.\label{eq:thetaUp}
+\psi_{C}^{d}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta_{f}\right)\psi_{\text{up}}^{n}+\theta_{f}\psi_{\text{up}}^{d}\right\} U_{f}.\label{eq:thetaUp}
 \end{equation}
 
 \end_inset
 
-To find the second-order approximation of 
-\begin_inset Formula $\Psi_{f}^{n+1/2}$
-\end_inset
-
-, we consider a linear combination of 
-\begin_inset Formula $\Psi$
-\end_inset
-
- at the departure point at time 
-\begin_inset Formula $n$
-\end_inset
-
- and 
-\begin_inset Formula $\Psi$
-\end_inset
-
- at the arrival point at time 
-\begin_inset Formula $n+1$
-\end_inset
-
-:
-\begin_inset Formula 
-\begin{equation}
-\Psi_{f}^{n+1/2}=\left(1-\theta\right)\Psi_{d}^{n}+\theta\Psi_{a}^{n+1}\label{eq:thetaPsiFace}
-\end{equation}
-
-\end_inset
-
-where the locations of the departure and arrival points are shown in fig
- 
+The proof that this first step gives positive solutions and bounded solutions
+ for non-divergent velocity fields on arbitrary meshes is in appendix 
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "fig:departureArrival"
+reference "sec:appxBounded"
 
-\end_inset
-
- and are given by
-\begin_inset Formula 
-\begin{eqnarray*}
-\mathbf{x}_{d} & = & \mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}\\
-\mathbf{x}_{a} & = & \mathbf{x}_{f}+\frac{\Delta t}{2}\mathbf{u}_{f}
-\end{eqnarray*}
-
-\end_inset
-
-The values of 
-\begin_inset Formula $\Psi$
-\end_inset
-
- and the departure and arrival points can be approximated by
-\begin_inset Formula 
-\begin{eqnarray*}
-\Psi_{d}^{n} & = & \Psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{u}\right)\cdot\nabla\Psi\\
-\Psi_{a}^{n+1} & = & \Psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{u}\right)\cdot\nabla\Psi.
-\end{eqnarray*}
-
-\end_inset
-
-Substituting these into (
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "eq:thetaPsiFace"
-
-\end_inset
-
-) gives
-\begin_inset Formula 
-\begin{eqnarray}
-\Psi_{f}^{n+\nicefrac{1}{2}} & = & \left(1-\theta\right)\Psi_{\text{up}}^{n}+\theta\Psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\Psi^{n}-\left(1-2\theta\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\Psi\label{eq:PsiDep-1-1-1}
-\end{eqnarray}
-
-\end_inset
-
-where 
-\begin_inset Formula $\mathbf{x}_{u}$
-\end_inset
-
- is the centre of the cell upwind of face 
-\begin_inset Formula $f$
 \end_inset
 
 .
- Therefore the MPDATA correction step is
-\begin_inset Formula 
-\begin{eqnarray*}
-\Psi_{C}^{n+1} & = & \Psi_{C}^{d}+\frac{\Delta t}{V_{C}}\sum_{f\in C}\Psi_{\text{vup}}^{d}V_{f}\\
-\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\Psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{u}\right)\cdot\nabla\Psi-\left(1-2\theta\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\Psi\right\} 
-\end{eqnarray*}
-
-\end_inset
-
-To avoid either using downwind values or extrapolating from the upwind to
- the downwind cell, the 
-\begin_inset Formula $1-2\theta$
-\end_inset
-
- term in 
-\begin_inset Formula $V_{f}$
-\end_inset
-
- is only used if 
-\begin_inset Formula $\theta\le\frac{1}{2}$
-\end_inset
-
-.
- If 
-\begin_inset Formula $\theta>\frac{1}{2}$
-\end_inset
-
-, this term changes sign and can lead to instability.
- A first-order error in time is present if this term is omitted which is
- acceptable for large Courant numbers.
- 
 \end_layout
 
 \begin_layout Standard
@@ -1313,7 +1228,161 @@ name "fig:departureArrival"
 \end_layout
 
 \begin_layout Standard
-The first step of the implicit/explicit MPDATA 
+To find the second-order approximation of 
+\begin_inset Formula $\psi_{f}^{n+1/2}$
+\end_inset
+
+, we consider a linear combination of 
+\begin_inset Formula $\psi$
+\end_inset
+
+ at the departure point at time 
+\begin_inset Formula $n$
+\end_inset
+
+ and 
+\begin_inset Formula $\psi$
+\end_inset
+
+ at the arrival point at time 
+\begin_inset Formula $n+1$
+\end_inset
+
+:
+\begin_inset Formula 
+\begin{equation}
+\psi_{f}^{n+1/2}=\left(1-\theta_{f}\right)\psi_{d}^{n}+\theta_{f}\psi_{a}^{n+1}\label{eq:thetaPsiFace}
+\end{equation}
+
+\end_inset
+
+where the locations of the departure and arrival points are shown in fig
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:departureArrival"
+
+\end_inset
+
+ and are given by
+\begin_inset Formula 
+\begin{eqnarray*}
+\mathbf{x}_{d} & = & \mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}\\
+\mathbf{x}_{a} & = & \mathbf{x}_{f}+\frac{\Delta t}{2}\mathbf{u}_{f}
+\end{eqnarray*}
+
+\end_inset
+
+The values of 
+\begin_inset Formula $\psi$
+\end_inset
+
+ and the departure and arrival points can be approximated by
+\begin_inset Formula 
+\begin{eqnarray*}
+\psi_{d}^{n} & = & \psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{u}\right)\cdot\nabla\psi\\
+\psi_{a}^{n+1} & = & \psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{u}\right)\cdot\nabla\psi.
+\end{eqnarray*}
+
+\end_inset
+
+Substituting these into (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:thetaPsiFace"
+
+\end_inset
+
+) gives
+\begin_inset Formula 
+\begin{eqnarray}
+\psi_{f}^{n+\nicefrac{1}{2}} & = & \left(1-\theta_{f}\right)\psi_{\text{up}}^{n}+\theta_{f}\psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi^{n}-\left(1-2\theta_{f}\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\label{eq:PsiDep-1}
+\end{eqnarray}
+
+\end_inset
+
+where 
+\begin_inset Formula $\mathbf{x}_{u}$
+\end_inset
+
+ is the centre of the cell upwind of face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ This correction is not stable for Courant number, 
+\begin_inset Formula $c>2$
+\end_inset
+
+ or 
+\begin_inset Formula $\theta>\frac{1}{2}$
+\end_inset
+
+ (appendix 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "sec:appxStability"
+
+\end_inset
+
+).
+ For stability for all 
+\begin_inset Formula $c$
+\end_inset
+
+ and second-order accuracy where 
+\begin_inset Formula $\theta\le\frac{1}{2}$
+\end_inset
+
+ the correction step is:
+\begin_inset Formula 
+\begin{eqnarray}
+\psi_{C}^{n+1} & = & \psi_{C}^{d}+\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{u}\right)\cdot\nabla\psi-\chi\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\right\} \label{eq:Vcorr}\\
+\chi & = & \max\left(1-2\theta_{f},\ 0\right)
+\end{eqnarray}
+
+\end_inset
+
+This gives a first-order error in time for 
+\begin_inset Formula $\theta>\frac{1}{2}$
+\end_inset
+
+ which is only used for large Courant numbers (
+\begin_inset Formula $>2$
+\end_inset
+
+).
+ It is stable on a uniform one-dimensional grid (appendix 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "sec:appxStability"
+
+\end_inset
+
+) but on an arbitrary grid, some smoothing is needed when 
+\begin_inset Formula $\theta>0$
+\end_inset
+
+ (section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:smoothing"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+Appendix 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "sec:appxStability"
+
+\end_inset
+
+ shows that the first (diffusive) step of the implicit/explicit MPDATA 
 \begin_inset Formula $\theta$
 \end_inset
 
@@ -1324,7 +1393,7 @@ reference "eq:thetaUp"
 
 \end_inset
 
-), can be shown to be stable and bounded when 
+), is stable and bounded when 
 \begin_inset Formula 
 \begin{eqnarray}
 \theta\ge1-\frac{1}{c} & \text{and} & \theta\ge0\label{eq:thetaBounds}
@@ -1352,77 +1421,50 @@ reference "eq:thetaBounds"
 \end_inset
 
 ) can be used to set 
-\begin_inset Formula $\theta$
+\begin_inset Formula $\theta_{f}$
 \end_inset
 
- based on local values of 
-\begin_inset Formula $c$
+ based on the values of the Courant number in the cells either side, 
+\begin_inset Formula $c_{\text{up}}$
 \end_inset
 
-.
- A degree of safety is added to avoid reaching the stability limits:
+ and 
+\begin_inset Formula $c_{\text{down}}$
+\end_inset
+
+ with a degree of safety added to avoid reaching the stability limits:
 \begin_inset Formula 
 \begin{equation}
-\theta=\max\left\{ 1-\frac{1}{c_{f}+0.2},\ 0\right\} 
+\theta_{f}=\max\left\{ 1-\frac{1}{c_{\text{up}}+0.25},\ 1-\frac{1}{c_{\text{down}}+0.25},\ 0\right\} .
 \end{equation}
 
 \end_inset
 
-where 
-\begin_inset Formula $c_{f}$
-\end_inset
 
- is the Courant number calculated on faces:
-\begin_inset Formula 
-\begin{eqnarray*}
-c_{f} & = & \frac{2\Delta tu_{n}}{|\mathbf{x}_{C}-\mathbf{x}_{N}|}
-\end{eqnarray*}
-
-\end_inset
-
-where 
-\begin_inset Formula $C$
-\end_inset
-
- and 
-\begin_inset Formula $N$
-\end_inset
-
- are the cells either side of 
-\begin_inset Formula $f$
-\end_inset
-
- and 
-\begin_inset Formula $u_{n}=\mathbf{u}_{f}\cdot\hat{\mathbf{S}}_{f}$
-\end_inset
-
-.
 \end_layout
 
 \begin_layout Subsection
-Additional Smoothing for Courant numbers 
-\begin_inset Formula $>1$
+Additional Smoothing for Large Courant numbers 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:smoothing"
+
 \end_inset
 
 
 \end_layout
 
 \begin_layout Standard
-The anti-diffusive flux, 
-\begin_inset Formula $V_{f}$
+Appendix 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:appxStability"
+
 \end_inset
 
-, is (necessarily) divergent and so care is needed to ensure that it does
- not generate oscillations.
- Additional spatial variability is introduced to 
-\begin_inset Formula $V_{f}$
-\end_inset
-
- where 
-\begin_inset Formula $\theta$
-\end_inset
-
- varies in space which can lead to oscillations.
+ shows that a linearised version of the implicit/explicit MPDATA is unconditiona
+lly stable on a uniform, one-dimensional grid.
+ However this does not carry over onto an arbitrary grid.
  Therefore 
 \begin_inset Formula $V_{f}$
 \end_inset
@@ -1431,12 +1473,8 @@ The anti-diffusive flux,
 \begin_inset Formula $\theta>0$
 \end_inset
 
- which reduces accuracy only where the Courant number is greater than 0.8.
- To smooth 
-\begin_inset Formula $V_{f}$
-\end_inset
-
-, first a cell centre anti-diffusive flux is reconstructed from surrounding
+.
+ First a cell centre anti-diffusive flux is reconstructed from surrounding
  fluxes:
 \begin_inset Formula 
 \begin{equation}
@@ -1459,62 +1497,34 @@ s a uniform vector field exactly.
 \end_inset
 
  to get a smoothed flux.
- The smoothed flux is not used at all for 
-\begin_inset Formula $\theta=0$
+ The smoothed flux is used where 
+\begin_inset Formula $\theta>0$
 \end_inset
 
- and used exclusively for 
-\begin_inset Formula $\theta\ge\frac{1}{2}$
+ and at the faces of cells with one face with 
+\begin_inset Formula $\theta>0$
 \end_inset
 
 :
 \begin_inset Formula 
-\begin{eqnarray}
-V_{f\text{smooth}} & = & s_{f}\left(\mathbf{v}_{Cf}\cdot\mathbf{S}_{f}\right)+\left(1-s_{f}\right)V_{f}\\
-\text{where }s_{f}^{\prime} & = & \min\left\{ 2\theta,\ 1\right\} \nonumber \\
-s_{f} & = & \max_{C\in f}\left\{ \max_{f^{\prime}\in C}s_{f^{\prime}}^{\prime}\right\} 
-\end{eqnarray}
+\begin{equation}
+V_{f}=\begin{cases}
+V_{f}\text{ from }(\ref{eq:Vcorr}) & \theta=0\\
+\mathbf{v}_{Cf}\cdot\mathbf{S}_{f} & \theta>0
+\end{cases}\label{eq:VcorrSmooth}
+\end{equation}
 
 \end_inset
 
 where 
-\begin_inset Formula $C\in f$
-\end_inset
-
- are the cells either side of face 
-\begin_inset Formula $f$
-\end_inset
-
- and 
 \begin_inset Formula $\mathbf{v}_{Cf}$
 \end_inset
 
- means 
-\begin_inset Formula $\mathbf{v}$
+ is the reconstructed velocity 
+\begin_inset Formula $\mathbf{v}_{C}$
 \end_inset
 
- linearly interpolated from cell centre values to faces.
- 
-\end_layout
-
-\begin_layout Standard
-The MPDATA correction for implicit time stepping can be much larger that
- the correction for explicit MPDATA so that the Courant number based on
- the correction can be larger than one.
- The correction is applied explicitly so the correction must be limited
- to ensure that Courant numbers associated with the correction are less
- than one for every cell:
-\begin_inset Formula 
-\begin{eqnarray}
-c_{v} & = & 2\frac{\Delta t}{V_{C}}\sum_{f\in C}|V_{f}|\ \text{(cell centred Courant number based on \ensuremath{V_{f}})}\\
-c_{vf} & = & \max_{C,N}\left\{ c_{v}\right\} \ \text{(face Courant number is max of cells either side)}\\
-V_{f} & = & V_{f}/\max\left\{ 1,\ c_{vf}\right\} \ \text{divide }V_{f}\text{ by the face Courant number if }c_{vf}>1.\label{eq:finalSmoothFlux}
-\end{eqnarray}
-
-\end_inset
-
-This reduces the accuracy but only for Courant numbers greater than 0.8.
- 
+ linearly interpolated from cell centres to faces.
 \end_layout
 
 \begin_layout Subsection
@@ -1536,25 +1546,25 @@ reference "eq:thetaUp"
 \end_inset
 
 ) is re-arranged so that the vector of new 
-\begin_inset Formula $\Psi^{d}$
+\begin_inset Formula $\psi^{d}$
 \end_inset
 
  values (
-\begin_inset Formula $\underline{\Psi}^{d}$
+\begin_inset Formula $\underline{\psi}^{d}$
 \end_inset
 
 ) is a linear combination of old 
-\begin_inset Formula $\Psi^{n}$
+\begin_inset Formula $\psi^{n}$
 \end_inset
 
  values (
-\begin_inset Formula $\underline{\Psi}^{n}$
+\begin_inset Formula $\underline{\psi}^{n}$
 \end_inset
 
 ):
 \begin_inset Formula 
 \begin{eqnarray}
-M\underline{\Psi}^{d} & = & N\underline{\Psi}^{n}\\
+M\underline{\psi}^{d} & = & N\underline{\psi}^{n}\\
 \text{where }M_{ij} & = & \begin{cases}
 1+\frac{\Delta t}{V_{i}}\sum_{f\in i}\theta_{f}\max\left\{ U_{f},0\right\}  & \text{for }i=j\\
 -\frac{\Delta t}{V_{i}}\theta_{f}\max\left\{ -U_{f},0\right\}  & \text{where }f\text{ is between cells }i\text{ and }j
@@ -1620,33 +1630,30 @@ MPDATA Gauge
 \end_layout
 
 \begin_layout Standard
-The gauge variant of MPDATA can be used with implicit/explicit time stepping
- exactly as it is used with standard, explicit MPDATA 
+The infinite gauge variant of MPDATA (equivalent to Lax-Wendroff) can be
+ used with implicit/explicit time stepping exactly as it is used with standard,
+ explicit MPDATA 
 \begin_inset CommandInset citation
 LatexCommand citep
-key "SC86"
+key "SC86,KS17"
 
 \end_inset
 
 .
- A large value (the gauge) is added to the tracer before advection and then
- subtracted afterwards.
- This makes the non-linearity of MPDATA smaller, can increase accuracy but
- means that MPDATA no longer preserves positivity.
- In the infinte gauge limit, MPDATA becomes a linear, Lax-Wendroff scheme.
- The correction step is applied only once using centred differences rather
- than upwinding 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "KS17"
-
-\end_inset
-
-
+ This removes the non-linearity of MPDATA and means that MPDATA no longer
+ preserves positivity.
+ 
 \end_layout
 
 \begin_layout Subsection
 Flux Corrected Transport (FCT) with Implicit Time Stepping
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:FCT"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -1667,12 +1674,35 @@ key "Zal79"
 \end_inset
 
  does not guarantee monotonicity when used with implicit time stepping.
- This is because the local bounds for the tracer at each point are assumed
- to be the value of the tracer at that point and its neighbours for the
- current and previous time step.
- This assumes that the local maxima will not be advected by more than one
- mesh cell in one time step which is no longer the case with implicit time
- stepping.
+ This is because 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Zal79"
+
+\end_inset
+
+ bound the tracer at time 
+\begin_inset Formula $n+1$
+\end_inset
+
+ by the diffusively transported tracer at time 
+\begin_inset Formula $n+1$
+\end_inset
+
+ and the tracer at time 
+\begin_inset Formula $n$
+\end_inset
+
+ at the current and upwind grid points.
+ The tracer at time 
+\begin_inset Formula $n$
+\end_inset
+
+ at the current and upwind grid points are not a suitable bounds if the
+ tracer can move a long distance in one time step.
+ When using implicit time stepping and large Courant numbers, local extrema
+ can be advected by more than one mesh cell in one time step so local bounds
+ from the previous time step no longer apply.
  We therefore define two variants of FCT to work with implicit time stepping.
  One guarantees monotonicity and the other guarantees boundedness within
  pre-defined bounds.
@@ -1680,70 +1710,75 @@ key "Zal79"
 \end_layout
 
 \begin_layout Standard
-The first step is to calculate the allowable minima and maxima for each
- cell which we will call 
-\begin_inset Formula $\Psi_{\min}$
-\end_inset
-
- and 
-\begin_inset Formula $\Psi_{\max}$
+The first step if FCT is to advect using a monotonic, diffusive scheme to
+ calculate 
+\begin_inset Formula $\psi^{d}$
 \end_inset
 
 .
- If we seek boundedness within pre-defined bounds then 
-\begin_inset Formula $\Psi_{\min}$
+ Appendix 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:appxBounded"
+
 \end_inset
 
- and 
-\begin_inset Formula $\Psi_{\max}$
-\end_inset
-
- are these bounds.
- Otherwise 
-\begin_inset Formula $\Psi_{\min}$
-\end_inset
-
- and 
-\begin_inset Formula $\Psi_{\max}$
-\end_inset
-
- are the extrema of 
-\begin_inset Formula $\Psi^{d}$
-\end_inset
-
- (from eqn (
+ shows that the first-order upwind in space, blended explicit/implicit scheme
+ (eqn 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "eq:thetaUp"
 
 \end_inset
 
-) after bounded advection and before correction in the immediate neighbourhood
- of each cell.
- This differs from explicit FCT which also uses 
-\begin_inset Formula $\Psi^{n}$
+) provides this solution for arbitrary Courant numbers.
+ The next step is to calculate the allowable minima and maxima for each
+ cell which we will call 
+\begin_inset Formula $\psi_{\min}$
 \end_inset
 
- which widens the bounds.
- However with implicit time stepping we cannot expect 
-\begin_inset Formula $\Psi^{n+1}$
-\end_inset
-
- to be bounded by neighbouring values of 
-\begin_inset Formula $\Psi^{n}$
+ and 
+\begin_inset Formula $\psi_{\max}$
 \end_inset
 
 .
- Consequently, the version described here for use with implicit time stepping
- is more diffusive because of the use solely of 
-\begin_inset Formula $\Psi^{d}$
+ If we seek boundedness within pre-defined bounds then 
+\begin_inset Formula $\psi_{\min}$
 \end_inset
 
- to define the local bounds.
+ and 
+\begin_inset Formula $\psi_{\max}$
+\end_inset
+
+ are these bounds.
+ Otherwise 
+\begin_inset Formula $\psi_{\min}$
+\end_inset
+
+ and 
+\begin_inset Formula $\psi_{\max}$
+\end_inset
+
+ are the local extrema of 
+\begin_inset Formula $\psi^{d}$
+\end_inset
+
+ in the current and neighbouring cells.
+ Explicit FCT also uses 
+\begin_inset Formula $\psi^{n}$
+\end_inset
+
+ which widens the bounds.
+ Consequently, FCT for implicit, monotonic advection will be more diffusive
+ because of the use solely of 
+\begin_inset Formula $\psi^{d}$
+\end_inset
+
+ to define the local bounds:
 \begin_inset Formula 
 \begin{eqnarray}
-\text{for cell }C\ \Psi_{\min} & = & \min_{N\in C}\left\{ \Psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C\label{eq:boundsMin}\\
-\text{for cell }C\ \Psi_{\max} & = & \max_{N\in C}\left\{ \Psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C.\label{eq:boundsMax}
+\text{for cell }C\ \psi_{\min} & = & \min_{N\in C}\left\{ \psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C\label{eq:boundsMin}\\
+\text{for cell }C\ \psi_{\max} & = & \max_{N\in C}\left\{ \psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C.\label{eq:boundsMax}
 \end{eqnarray}
 
 \end_inset
@@ -1759,27 +1794,27 @@ key "Zal79"
 
 \begin_inset Formula 
 \begin{eqnarray}
-Q_{p} & = & \Psi_{\max}-\Psi^{d}\\
-Q_{m} & = & \Psi^{d}-\Psi_{\min}.
+Q_{p} & = & \psi_{\max}-\psi^{d}\\
+Q_{m} & = & \psi^{d}-\psi_{\min}.
 \end{eqnarray}
 
 \end_inset
 
 We next need to modify the unbounded MPDATA high order flux corrections
  (HOC) from the implicit/explicit correction.
- This is the MPDATA volume flux correction, 
+ This is the MPDATA flux correction, 
 \begin_inset Formula $V_{f}$
 \end_inset
 
 , from (
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "eq:finalSmoothFlux"
+reference "eq:VcorrSmooth"
 
 \end_inset
 
 ) multiplied by 
-\begin_inset Formula $\Psi_{d}$
+\begin_inset Formula $\psi_{d}$
 \end_inset
 
  at the upwind cell (upwind defined relative to 
@@ -1789,7 +1824,7 @@ reference "eq:finalSmoothFlux"
 ):
 \begin_inset Formula 
 \begin{equation}
-F_{f\text{HOC}}=\Psi_{d\text{up}}V_{f}.
+F_{f\text{HOC}}=\psi_{d\text{up}}V_{f}.
 \end{equation}
 
 \end_inset
@@ -1860,7 +1895,7 @@ and cells
  Then the final update is
 \begin_inset Formula 
 \begin{equation}
-\Psi_{C}^{n+1}=\Psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}F_{f}
+\psi_{C}^{n+1}=\psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}F_{f}
 \end{equation}
 
 \end_inset
@@ -1880,7 +1915,7 @@ reference "eq:boundsMax"
 \end_inset
 
 ) are used to bound 
-\begin_inset Formula $\Psi$
+\begin_inset Formula $\psi$
 \end_inset
 
  and bounded if specific bounds are specified.
@@ -1888,6 +1923,325 @@ reference "eq:boundsMax"
 
 \begin_layout Section
 Advection Test Cases
+\end_layout
+
+\begin_layout Subsection
+One-dimensional Advection
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+Implicit/explicit MPDATA
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/MPDATA/mesh10_100/1/Tcompare.eps
+	lyxscale 50
+	width 75text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+Implicit/explicit infinite gauge MPDATA
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/LW/mesh10_100/1/Tcompare.eps
+	lyxscale 50
+	width 75text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+Implicit/explicit infinite gauge MPDATA with FCT
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/LW_FCT/mesh10_100/1/Tcompare.eps
+	lyxscale 50
+	width 75text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Advection once around a periodic domain starting from mixed initial conditions
+ 
+\begin_inset Formula $\psi^{0}$
+\end_inset
+
+ using 40 grid points for the uniform resolution and 100 grid points for
+ the resolution with a factor 
+\begin_inset Formula $R=10$
+\end_inset
+
+ between finest and coarsest.
+ The regions where the non-uniform resolution has a Courant number greater
+ than 0.75 (where implicit time stepping is used) is shaded grey.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:1dresults"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The first test of the blended implicit/explicit MPDATA is in one dimensional
+ with uniform velocity.
+ In order to vary the Courant number in space so that the scheme is implicit
+ and explicit in different places, variable resolution is used and compared
+ with uniform resolution simulations.
+ The variable resolution grids have resolution a factor of 
+\begin_inset Formula $R=10$
+\end_inset
+
+ finer in the middle of the unit length domain than the end points.
+ There are 
+\begin_inset Formula $n$
+\end_inset
+
+ cells (
+\begin_inset Formula $n+1$
+\end_inset
+
+ grid points) in the unit length and a constant ratio, 
+\begin_inset Formula $r=R^{\frac{2}{n-2}}$
+\end_inset
+
+, between successive cells in the first half of the domain and 
+\begin_inset Formula $\frac{1}{r}$
+\end_inset
+
+ in the second half.
+ Therefore the resolution of cell 
+\begin_inset Formula $i$
+\end_inset
+
+ is:
+\begin_inset Formula 
+\begin{equation}
+\Delta x_{i}=\begin{cases}
+\frac{1}{2}Rr^{-i}\frac{1-r}{1-rR} & i\le\frac{n}{2}-1\\
+\frac{1}{2}Rr^{\frac{n}{2}-i}\frac{1-r}{1-rR} & i\ge\frac{n}{2}.
+\end{cases}
+\end{equation}
+
+\end_inset
+
+We use smooth initial conditions for evaluating convergence with resolution
+ and mixed initial conditions for inspecting boundedness and overall quality
+ of solution:
+\begin_inset Formula 
+\begin{eqnarray}
+\psi_{\text{smooth}}^{0} & = & \begin{cases}
+\frac{1}{2}\left\{ 1+\cos\pi\left(4x-1\right)\right\}  & x\in\left[0,0.5\right]\\
+0 & \text{otherwise}
+\end{cases}\\
+\psi_{\text{mixed}}^{0} & = & \begin{cases}
+\frac{1}{2}\left\{ 1+\cos\pi\left(4x-1\right)\right\}  & x\in\left[0,0.5\right]\\
+1 & x\in\left[0.6,0.8\right]\\
+0 & \text{otherwise.}
+\end{cases}
+\end{eqnarray}
+
+\end_inset
+
+All simulations use velocity of 
+\begin_inset Formula $u=1$
+\end_inset
+
+ and run for one time unit so that the tracer travels one complete revolution
+ around the periodic domain.
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:1dresults"
+
+\end_inset
+
+ shows solutions starting from the mixed initial conditions using 100 time
+ steps each of length 
+\begin_inset Formula $\Delta t=0.01$
+\end_inset
+
+.
+ The uniform resolution has 40 cells giving a uniform Courant number of
+ 0.4 (meaning that the time stepping is purely explicit).
+ The non-uniform resolution has 100 cells with 
+\begin_inset Formula $R=10$
+\end_inset
+
+ giving a Courant numbers in the range 
+\begin_inset Formula $c\in\left[0.4,4\right]$
+\end_inset
+
+ so that implicit time stepping is used where 
+\begin_inset Formula $c>0.75$
+\end_inset
+
+.
+ As expected, the MPDATA results (top row of figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:1dresults"
+
+\end_inset
+
+) are always positive for both the uniform resolution (explicit time stepping)
+ and the non-uniform resolution (implicit/explicit time stepping).
+ The non-uniform resolution solution produces a stable overshoot above the
+ square wave which cannot be ruled out by MPDATA without limited fluxes.
+ The infinite gauge version of MPDATA (middle row of figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:1dresults"
+
+\end_inset
+
+) produces undershoots and overshoots and the solution is more accurate
+ in the region of the smooth wave.
+ Neither the uniform (explicit) or non-uniform (implicit/explicit) results
+ appear more accurate than the other.
+ The results using flux-corrected transport (FCT, bottom row of figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:1dresults"
+
+\end_inset
+
+) are bounded above and below, demonstrating the efficacy of the flux correction
+s applied to implicit/explicit time stepping.
+ The uniform (explicit) or non-uniform (implicit/explicit) results appear
+ very similar.
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/cosBell/plots/l2converge.eps
+	width 75text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Convergence of the 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution of the one-dimensional advection of the smooth
+ initial conditions, 
+\begin_inset Formula $\psi^{0}$
+\end_inset
+
+.
+ The uniform resolutions use 20, 40 and 80 grid points and the non-uniform
+ resolutions use 50, 100 and 200 grid points with ratio 
+\begin_inset Formula $R=10$
+\end_inset
+
+.
+ Both use time steps of 
+\begin_inset Formula $\Delta t=0.02$
+\end_inset
+
+, 0.01 and 0.005.
+ Dotted lines show the slope of first and second-order convergence.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:1d_converge"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Convergence with resolution for all schemes on uniform and non-uniform meshes
+ starting from the smooth initial conditions is shown in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:1d_converge"
+
+\end_inset
+
+.
+ The uniform meshes always use purely explicit time stepping (
+\begin_inset Formula $c=0.4$
+\end_inset
+
+) and the non-uniform meshes use blended implicit/explicit since 
+\begin_inset Formula $c\in\left[0.4,4\right]$
+\end_inset
+
+.
+ MPDATA with and without the infinite gauge and with and without FCT give
+ second-order convergence.
+ Even though the non-uniform grid means that the Courant number reaches
+ 4 at the centre of the domain, the convergence remains strong.
 \end_layout
 
 \begin_layout Subsection
@@ -1916,6 +2270,15 @@ Latitude-longitude meshes are orthogonal and have uniform resolution following
  co-ordinate lines but they have severe convergence of mesh lines towards
  two poles so numerical methods are needed that can cope with very large
  Courant numbers.
+ We use a latitude-longitude mesh with a cell at each pole (fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:grids"
+
+\end_inset
+
+).
 \end_layout
 
 \begin_layout Enumerate
@@ -1994,7 +2357,7 @@ status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_latLonSkipped_2gauge_adv/latLon_48x24/constant/mesh.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonPolarSkipped_c2/latLon_48x24/constant/mesh.pdf
 	lyxscale 50
 	width 48text%
 
@@ -2031,7 +2394,7 @@ Skipped latitude-longitude,
 \begin_inset Formula $48\times24$
 \end_inset
 
-, 864 cells
+, 818 cells
 \end_layout
 
 \end_inset
@@ -2170,7 +2533,7 @@ ty.
 
 ).
  The wind is defined by a stream function, 
-\begin_inset Formula $\psi$
+\begin_inset Formula $\Psi$
 \end_inset
 
 , based on latitude, 
@@ -2192,7 +2555,7 @@ ty.
 :
 \begin_inset Formula 
 \begin{equation}
-\psi\left(\lambda,\phi,t\right)=\frac{10R}{T}\sin^{2}\left(\lambda-\frac{2\pi t}{T}\right)\cos^{2}\phi\cos\frac{\pi t}{T}-\frac{2\pi R}{T}\sin\phi
+\Psi\left(\lambda,\phi,t\right)=\frac{10R}{T}\sin^{2}\left(\lambda-\frac{2\pi t}{T}\right)\cos^{2}\phi\cos\frac{\pi t}{T}-\frac{2\pi R}{T}\sin\phi
 \end{equation}
 
 \end_inset
@@ -2208,7 +2571,7 @@ Gaussian Hills
 The Gaussian hills initial conditions are infinitely smooth and so can be
  used to measure the numerical order of convergence.
  The initial conditions of the tracer, 
-\begin_inset Formula $\Psi_{0}$
+\begin_inset Formula $\psi_{0}$
 \end_inset
 
 , are given in terms of the three dimensional position vector, 
@@ -2218,7 +2581,7 @@ The Gaussian hills initial conditions are infinitely smooth and so can be
 , in Caresian co-ordinates:
 \begin_inset Formula 
 \begin{eqnarray}
-\Psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
+\psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
 \text{where }\mathbf{x}_{i} & = & \left(R\cos\phi_{i}\cos\lambda_{i},\ R\cos\phi_{i}\sin\lambda_{i},\ R\sin\phi_{i}\right)\\
 \left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
 \left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right)
@@ -2238,12 +2601,11 @@ reference "fig:fullDeformation2p5"
 
 \end_inset
 
- calculated on five different meshes of the sphere, all at similar resolutions,
- and for a 
+ calculated on five different meshes of the sphere and for a 
 \begin_inset Formula $30^{o}$
 \end_inset
 
- rotated version of the latitude-longitude mesh.
+ rotated version of the latitude-longitude mesh, all at a similar resolution.
  The implicit/explicit 
 \begin_inset Formula $\theta$
 \end_inset
@@ -2264,9 +2626,9 @@ reference "fig:fullDeformation2p5"
 \begin_inset Formula $0.01$
 \end_inset
 
- and for each mesh the maximum Courant number (over all time) is above one
- so the simulations would be unstable if a purely explicit scheme were used
- (although at 
+ (500 time steps in total) giving a Courant number of around 2 so that the
+ simulations would be unstable if a purely explicit scheme were used (although
+ at 
 \begin_inset Formula $t=2.5$
 \end_inset
 
@@ -2287,7 +2649,7 @@ reference "tab:dx_dt"
 \begin_inset Float table
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \noindent
@@ -3840,17 +4202,25 @@ name "tab:dx_dt"
 
 \begin_layout Standard
 The flow goes to zero at the north and south poles so the convergence of
- meridians of the latitude-longitude mesh does not lead to large Courant
- numbers.
+ meridians of the un-rotated latitude-longitude mesh does not lead to large
+ Courant numbers.
  However when the mesh is rotated by 
 \begin_inset Formula $30^{o}$
 \end_inset
 
 , high winds cross the poles of the mesh so the maximum Courant number goes
- up to 70 without causing instability, a lack of positivity or visible artefacts
- in the solution.
- The large values of Courant number are removed on the rotated, skipped
- latitude longitude mesh although some values above 0.8 are visible at 
+ up to 70 (the contours in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ show the Courant number).
+ These large Courant numbers do not lead to instability, a lack of positivity
+ or visible artefacts in the solution.
+ The large Courant numbers are removed on the rotated, skipped latitude
+ longitude mesh although some values above 0.8 are visible at 
 \begin_inset Formula $t=2.5$
 \end_inset
 
@@ -3868,13 +4238,20 @@ The flow goes to zero at the north and south poles so the convergence of
  The results from the hexagonal mesh appear accurate but note that this
  mesh has higher resolution that the other meshes, which explains the higher
  Courant number than the triangular mesh.
+ On the triangular mesh, the maximum values are increased (from 0.95 to 1.08
+ at 2.5s on triangular mesh 6).
+ The anti-diffusion appears too strong which could be dangerous as it could
+ lead to instability.
+ It would probably be possible to optimise MPDATA for the triangular mesh
+ but this has not been done.
+ 
 \end_layout
 
 \begin_layout Standard
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Tabular
@@ -3889,7 +4266,7 @@ status open
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLon_c2/latLon_240x120/2.5/Traw.pdf
-	lyxscale 50
+	lyxscale 75
 	width 48text%
 
 \end_inset
@@ -4015,7 +4392,7 @@ Rotated, full lat-lon, 30
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_cubedSphere_c2/cube_60/2.5/Traw.pdf
-	lyxscale 50
+	lyxscale 75
 	width 48text%
 
 \end_inset
@@ -4067,7 +4444,7 @@ Cubed-sphere,
 \begin_inset Text
 
 \begin_layout Plain Layout
-21,750cells, 
+21,750 cells, 
 \begin_inset Formula $\Delta t=0.01$
 \end_inset
 
@@ -4105,7 +4482,7 @@ Cubed-sphere,
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_HRgrid_c2/HRgrid7/2.5/Traw.pdf
-	lyxscale 50
+	lyxscale 75
 	width 48text%
 
 \end_inset
@@ -4121,7 +4498,7 @@ Cubed-sphere,
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_tri_c2/tri6/2.5/Traw.pdf
-	lyxscale 50
+	lyxscale 75
 	width 48text%
 
 \end_inset
@@ -4202,8 +4579,7 @@ Triangular mesh 6,
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/Traw_T.eps
-	display false
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/T.eps
 	width 48text%
 
 \end_inset
@@ -4235,8 +4611,7 @@ Triangular mesh 6,
 
 \begin_layout Plain Layout
 Deformational flow on the sphere after 2.5 time units.
- The colours show the piece-wise uniform value of the tracer value in each
- cell.
+ The colours show the tracer (piece-wise constant in each cell).
  The contours show the Courant number contoured every 0.2 starting from 
 \begin_inset Formula $c=0.8$
 \end_inset
@@ -4245,7 +4620,7 @@ Deformational flow on the sphere after 2.5 time units.
 \begin_inset Formula $c=2$
 \end_inset
 
- (black) and dotted black contours every 1 for 
+ (black) and dashed contours every 1 for 
 \begin_inset Formula $c\ge3$
 \end_inset
 
@@ -4300,14 +4675,16 @@ reference "fig:MPDATAGuassiandiagnostics"
 .
  All of the minima remain positive and very close to zero.
  The maxima decrease due to numerical diffusion but they do not decrease
- monotonically as expected.
+ monotonically MPDATA is not a monotonic scheme.
+ The maximum on the triangular mesh increases and oscillates before it decreases
+, would could be a feature that makes it prone to instability.
 \end_layout
 
 \begin_layout Standard
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 Maximum and minimum tracer values for all time steps
@@ -4430,7 +4807,11 @@ reference "fig:MPDATAGuassiandiagnostics"
 \end_layout
 
 \begin_layout Standard
-The convergence with resolution is shown in the bottom row of fig.
+The convergence of the 
+\begin_inset Formula $\ell_{2}$
+\end_inset
+
+ error norm with resolution is shown in the bottom row of fig.
  
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -4448,17 +4829,11 @@ reference "tab:dx_dt"
 \end_inset
 
 .
+ The resolution to time step ratio is kept constant along each line.
  Included in this graph is simulations using half the time step and five
  times the time step for the latitude-longitude mesh (giving maximum Courant
- number 
-\begin_inset Formula $<1$
-\end_inset
-
- and 
-\begin_inset Formula $<10$
-\end_inset
-
-) in order show the impact of varying the mean Courant number.
+ number around one and around ten in order show the impact of varying the
+ mean Courant number.
  Reducing the time step to get 
 \begin_inset Formula $c<1$
 \end_inset
@@ -4492,11 +4867,7 @@ reference "tab:dx_dt"
 \end_layout
 
 \begin_layout Standard
-A plot of convergence of the 
-\begin_inset Formula $\ell_{2}$
-\end_inset
-
- error norm with resolution is shown at the bottom of fig.
+The convergence with resolution in fig.
  
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -4504,25 +4875,8 @@ reference "fig:MPDATAGuassiandiagnostics"
 
 \end_inset
 
- with the resolution to time step ratio kept constant along each line.
- The resolutions and time steps are shown in table 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "tab:dx_dt"
-
-\end_inset
-
-.
- None of the simulations in fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:MPDATAGuassiandiagnostics"
-
-\end_inset
-
- converge with second-order accuracy in the range of resolutions used although
- most achieve convergence better than first at the highest resolution.
+ is around first-order at coarse resolution and approaches second-order
+ at higher resolution.
  It is expected for second-order advection schemes to converge at less that
  second order at coarse resolution for this test case, as demonstrated in
  figures 1 and 2 of 
@@ -4551,11 +4905,15 @@ key "LUJ+14"
 \end_inset
 
 .
+ The exception is on the triangular mesh which looses accuracy at the highest
+ resolution due to instabilities.
+ 
 \end_layout
 
 \begin_layout Standard
 Better accuracy at the expense of positivity can be achieved with MPDATA
- by using the gauge variant which works for the 
+ by using the infinite gauge variant (equivalent to Lax-Wendroff) which
+ works for the 
 \begin_inset Formula $\theta$
 \end_inset
 
@@ -4567,12 +4925,37 @@ key "SC86"
 \end_inset
 
 .
+ The maximum and minimum values of the tracer for infinite gauge simulations
+ with the same resolution as those shown in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:fullDeformation2p5"
+
+\end_inset
+
+ are shown in figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGaugeDiagnostics"
+
+\end_inset
+
+.
+ In comparison to the MPDATA simulations without a gauge (figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MPDATAGuassiandiagnostics"
+
+\end_inset
+
+) the gauge results have a smaller reduction in the maximum (because the
+ results are more accurate and hence less diffusive) but the minima is less
+ than zero (spurious undershoots are generated).
  
 \begin_inset Formula $\ell_{2}$
 \end_inset
 
- errors with resolution for advecting the Gaussian hills with a gauge of
- 10 are shown in fig.
+ errors with resolution are shown at the bottom of fig.
  
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -4596,34 +4979,28 @@ reference "tab:dx_dt"
 \end_inset
 
  .
- These simulations use two MPDATA corrections per time step.
- With the gauge, minimum tracer values reduce to around -0.1 (top row of
- fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:MPDATAGaugeDiagnostics"
-
+ These simulations use one correction per time step.
+ The order of convergence is higher and the 
+\begin_inset Formula $\ell_{2}$
 \end_inset
 
-) while errors are lower and the order of convergence higher (bottom row
- of fig.
- 
+ errors lower than MPDATA results without a gauge (figure 
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "fig:MPDATAGaugeDiagnostics"
+reference "fig:MPDATAGuassiandiagnostics"
 
 \end_inset
 
 ).
- 
+ Again the results on the triangular mesh are not well behaved which could
+ probably be fixed with optimisation for a triangular mesh.
 \end_layout
 
 \begin_layout Standard
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 Maximum and minimum tracer values for all time steps
@@ -4650,24 +5027,6 @@ Convergence of
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2errorGauge.eps
-	width 80text%
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-Convergence of 
-\begin_inset Formula $\ell_{2}$
-\end_inset
-
- error norm with resolution for easier test case
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2errorWeak.eps
 	width 80text%
 
 \end_inset
@@ -4711,44 +5070,6 @@ name "fig:MPDATAGaugeDiagnostics"
 
 \end_layout
 
-\begin_layout Standard
-Rather than going to ever higher resolution in order to achieve the theoretical
- order of convergence, an easier version of the same test case is simulated.
- This has the same features but coefficients are chosen to make the deformation
- smaller and the tracer smoother so that errors do not saturate.
- The deformational flow field for the easier test case is given by the streamfun
-ction:
-\begin_inset Formula 
-\begin{equation}
-\psi\left(\lambda,\phi,t\right)=\frac{2R}{5}\sin^{2}\left(\lambda-\frac{2\pi t}{5}\right)\cos^{2}\phi\cos\frac{\pi t}{5}-\frac{2\pi R}{5}\sin\phi
-\end{equation}
-
-\end_inset
-
-and the Gaussian hills are given by
-\begin_inset Formula 
-\begin{eqnarray}
-\Psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -3\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -3\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
-\text{where }\mathbf{x}_{i} & = & \left(R\cos\phi_{i}\cos\lambda_{i},\ R\cos\phi_{i}\sin\lambda_{i},\ R\sin\phi_{i}\right)\\
-\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
-\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right).
-\end{eqnarray}
-
-\end_inset
-
-Using this configuration, lower resolution meshes, two implicit/explicit
- MPDATA iterations with a gauge of 10, the convergence with resolution is
- second order (bottom of fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:MPDATAGaugeDiagnostics"
-
-\end_inset
-
-).
-\end_layout
-
 \begin_layout Subsubsection
 Slotted Cylinders
 \end_layout
@@ -4767,7 +5088,7 @@ key "LSPT12"
  with initial tracers defined by:
 \begin_inset Formula 
 \begin{eqnarray}
-\Psi_{0}\left(\lambda,\phi\right) & = & \begin{cases}
+\psi_{0}\left(\lambda,\phi\right) & = & \begin{cases}
 1 & \text{if }r_{i}\le r\text{ and }|\lambda-\lambda_{i}|\ge\frac{r}{6R}\text{ for }i=1,2\\
 1 & \text{if }r_{1}\le r\text{ and }|\lambda-\lambda_{1}|<\frac{r}{6R}\text{ and }\phi-\phi_{1}<-\frac{5}{12}\frac{r}{R}\\
 1 & \text{if }r_{2}\le r\text{ and }|\lambda-\lambda_{2}|<\frac{r}{6R}\text{ and }\phi-\phi_{2}>\frac{5}{12}\frac{r}{R}\\
@@ -4781,7 +5102,11 @@ r & = & R/2,\ r_{i}=|\mathbf{x}-\mathbf{x}_{i}|\\
 
 \end_inset
 
-The tracer fields at the end of the simulations are shown in fig.
+The tracer fields at the end of the simulations (
+\begin_inset Formula $t=T=5$
+\end_inset
+
+) are shown in fig.
  
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -4798,12 +5123,8 @@ reference "tab:dx_dt"
 \end_inset
 
 ).
- This uses the implicit/explicit 
-\begin_inset Formula $\theta$
-\end_inset
-
- MPDATA with a guage of 10 and flux corrected transport limited to ensure
- monotonicity.
+ This uses the implicit/explicit infinite guage MPDATA and flux corrected
+ transport limited to ensure monotonicity.
  Fig.
  
 \begin_inset CommandInset ref
@@ -4817,6 +5138,8 @@ reference "fig:fullDeformationSlot5"
  the Courant number reaches 140.
  The skipped latitude-longitude mesh has sharp jumps in the Courant number
  which do not cause artefacts in the solution.
+ The flux correction also removes the overshoots from the triangular mesh
+ solution.
  This is, to our knowledge, the first monotonic and conservative solution
  of the advection equation using such a large Courant number.
 \end_layout
@@ -4840,7 +5163,7 @@ status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLon_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolar_c2/latLon_480x240/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -4856,7 +5179,7 @@ status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLonRotated_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolarRotated_c2/latLon_480x240/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -4950,7 +5273,7 @@ Rotated 30
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_latLonSkipped_c2_FCT/latLon_480x240/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolarSkipped_c2/latLon_480x240/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -4966,7 +5289,7 @@ Rotated 30
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_cubedSphere_c2_FCT/cube_120/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_cubedSphere_c2/cube_120/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -5056,7 +5379,7 @@ Cubed-sphere,
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_HRgrid_c2_FCT/HRgrid8/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_HRgrid_c2/HRgrid8/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -5072,7 +5395,7 @@ Cubed-sphere,
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/MPDATA_tri_c2_FCT/tri7/5/TslotRaw.pdf
+	filename /home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_tri_c2/tri7/5/TslotRaw.pdf
 	lyxscale 75
 	width 48text%
 
@@ -5270,8 +5593,8 @@ status collapsed
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-Number of solver iterations per time step for simulations on latitude-longitude
- meshes.
+Number of solver iterations per time step for simulations on unrotated latitude-
+longitude meshes.
  The legend shows if the simulation used a solver tolerance of 
 \begin_inset Formula $10^{-6}$
 \end_inset
@@ -5281,10 +5604,7 @@ Number of solver iterations per time step for simulations on latitude-longitude
 \end_inset
 
 .
- The simulations on rotated latitude-longitude meshes have a mean Courant
- number of about 1 and a maximum of about 70.
- The simulations on unrotated meshes have a mean Courant number of around
- 5 and a maximum of 10.
+ 
 \begin_inset CommandInset label
 LatexCommand label
 name "fig:nIterations"
@@ -5313,100 +5633,28 @@ reference "fig:nIterations"
 
 \end_inset
 
- for various simulations on different resolution latitude-longitude mesh.
- The first observation about this plot is that the number of iterations
- is smallest at time 2.5, in the middle of the simulation, for all simulations.
- This is because the winds speeds are lowest in the middle of the simulation
- resulting in smaller mean and maximum Courant numbers, as shown in fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:MPDATAGuassiandiagnostics"
-
-\end_inset
-
-.
- 
-\end_layout
-
-\begin_layout Standard
-The first set of simulations used to create fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:nIterations"
-
-\end_inset
-
- used a rotated latitude-longitude mesh with some very high (~70) localised
- Courant numbers over the poles of the mesh (fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:fullDeformation2p5"
-
-\end_inset
-
-, top right).
- The simulations using a solver tolerance of 
-\begin_inset Formula $10^{-6}$
-\end_inset
-
- are shown with black lines for various resolutions and using a tolerance
- of 
-\begin_inset Formula $10^{-12}$
-\end_inset
-
- with blue lines.
- The tighter tolerance leads to a few more iterations per time step.
- Higher spatial resolution has little influence on the number of iterations
- per time step.
+ for various simulations on different resolutions of the latitude-longitude
+ mesh.
+ The number of iterations is smallest around time 2.5 when the wind speed
+ is lowest and so the Courant number is smallest.
+ For simulations with the maximum Courant number less than 0.75 in the middle
+ of the simulations, the number of solver iterations drops to zero because
+ the simulation is purely explicit.
+ The simulations represented by black lines have a maximum Courant number
+ of 1 and so the number of iterations is small throughout the simulation.
+ For the simulations with a maximum Courant number of 2 (in blue), the number
+ of iterations is always below 5.
+ Once the maximum Courant number reaches 10, the number of iterations can
+ be over 15.
+ The number of iterations increases slower than linearly with Courant number,
+ which is necessary for efficiency.
+ However it is possible to reduce the number of iterations by reducing the
+ solver tolerance.
  The tighter tolerance made less than 1% difference to the error norms of
  the final solution (not shown).
- The residual for measuring solver convergence is a root mean square, volume
- weighted error over the whole mesh.
- Therefore the very large Courant numbers in the small region of the mesh
- near the poles do not slow down convergence severely.
- The results in fig.
+ Higher spatial resolution has little influence on the number of iterations
+ per time step.
  
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:fullDeformation2p5"
-
-\end_inset
-
-, top right also show that there are no oscillations near the poles so the
- solver tolerance is strong enough to control oscillations near the poles.
- 
-\end_layout
-
-\begin_layout Standard
-The second set of simulations used to create fig.
- 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "fig:nIterations"
-
-\end_inset
-
- used an un-rotated latitude-longitude mesh but much larger time steps so
- that the mean Courant number is around 5 and the maximum is 10.
- These simulations require more iterations per time step to reach the solver
- tolerance, particularly for the tight tolerance (in green).
- Again the resolution has a weaker influence on the number of iterations.
- 
-\end_layout
-
-\begin_layout Itemize
-How expensive are the solvers
-\end_layout
-
-\begin_layout Itemize
-How can we achieve multi-tracer efficiency?
-\end_layout
-
-\begin_layout Itemize
-MPI
 \end_layout
 
 \begin_layout Section
@@ -5422,6 +5670,437 @@ Acknowledgements
 LatexCommand bibtex
 bibfiles "numerics"
 options "abbrvnat"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\start_of_appendix
+Boundedness of the first-order Upwind Implicit/Explicit Scheme
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:appxBounded"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The first-order upwind, implicit/explicit scheme can be written:
+\begin_inset Formula 
+\begin{eqnarray}
+\psi_{C}^{n+1}=\psi_{C}^{n} & + & \frac{\Delta t}{V_{C}}\sum_{i\in\text{in}}\left(1-\theta_{i}\right)U_{i}\psi_{i}^{n}+\frac{\Delta t}{V_{C}}\sum_{i\in\text{in}}\theta_{i}U_{i}\psi_{i}^{n+1}\label{eq:thetaUp-2}\\
+ & - & \frac{\Delta t}{V_{C}}\sum_{o\in\text{out}}\left(1-\theta_{o}\right)U_{o}\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{o\in\text{out}}\theta_{o}U_{o}\psi_{C}^{n+1}\nonumber 
+\end{eqnarray}
+
+\end_inset
+
+for cell 
+\begin_inset Formula $C$
+\end_inset
+
+ with faces 
+\begin_inset Formula $i\in\text{in}$
+\end_inset
+
+ with flow into cell 
+\begin_inset Formula $C$
+\end_inset
+
+ and faces 
+\begin_inset Formula $j\in\text{out}$
+\end_inset
+
+ with flow out of cell 
+\begin_inset Formula $C$
+\end_inset
+
+, off-centering values 
+\begin_inset Formula $\theta_{i,j}\in[0,1]$
+\end_inset
+
+, 
+\begin_inset Formula $U_{i,o}$
+\end_inset
+
+ the volume fluxes through faces 
+\begin_inset Formula $i,o$
+\end_inset
+
+ and 
+\begin_inset Formula $\psi_{i}$
+\end_inset
+
+ the values of 
+\begin_inset Formula $\psi$
+\end_inset
+
+ in cells through the 
+\begin_inset Formula $i$
+\end_inset
+
+ faces.
+ The 
+\begin_inset Formula $\theta_{i,o}$
+\end_inset
+
+ are defined on faces for conservation so the boundedness properties of
+ this scheme require thought.
+ This can be re-arranged to give:
+\begin_inset Formula 
+\begin{equation}
+\psi_{C}^{n+1}=\gamma\psi_{C}^{n}+{\displaystyle \sum_{_{i\in\text{in}}}}\alpha_{i}\psi_{i}^{n}+\sum_{_{i\in\text{in}}}\beta_{i}\psi_{i}^{n+1}\label{eq:convexScheme}
+\end{equation}
+
+\end_inset
+
+where
+\begin_inset Formula 
+\begin{eqnarray*}
+\alpha_{i} & = & \frac{\frac{\Delta t}{V_{C}}\left(1-\theta_{i}\right)U_{i}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}\text{ for each }i\\
+\beta_{i} & = & \frac{\frac{\Delta t}{V_{j}}\theta_{i}U_{i}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}\text{ for each }i\\
+\gamma & = & \frac{1-\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\left(1-\theta_{o}\right)U_{o}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}.
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Formula $\alpha_{i}$
+\end_inset
+
+, 
+\begin_inset Formula $\beta_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ are all positive as long as the 
+\begin_inset Formula $\theta_{0}$
+\end_inset
+
+ are chosen to give
+\begin_inset Formula 
+\begin{equation}
+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\left(1-\theta_{o}\right)U_{o}\le1
+\end{equation}
+
+\end_inset
+
+which can be accomplished by setting
+\begin_inset Formula 
+\begin{equation}
+\theta_{f}\ge1-\frac{1}{\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}U_{o}}
+\end{equation}
+
+\end_inset
+
+for the cells either side of face 
+\begin_inset Formula $f$
+\end_inset
+
+.
+ Hence all 
+\begin_inset Formula $\psi$
+\end_inset
+
+ are positive at the next time step.
+ If, in addition the flow is discretely divergence free then:
+\begin_inset Formula 
+\begin{equation}
+\sum_{i\in\text{in}}U_{i}=\sum_{o\in\text{out}}U_{o}
+\end{equation}
+
+\end_inset
+
+which implies
+\begin_inset Formula 
+\begin{equation}
+\sum_{i\in\text{in}}\alpha_{i}+\sum_{i\in\text{in}}\beta_{i}+\gamma=1\label{eq:convexParams}
+\end{equation}
+
+\end_inset
+
+so from (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:convexScheme"
+
+\end_inset
+
+) 
+\begin_inset Formula $\psi_{C}^{n+1}$
+\end_inset
+
+ is a convex combination of 
+\begin_inset Formula $\psi_{C}^{n}$
+\end_inset
+
+, 
+\begin_inset Formula $\psi_{i}^{n}$
+\end_inset
+
+ and 
+\begin_inset Formula $\psi_{i}^{n+1}$
+\end_inset
+
+.
+ This in fact proves that the scheme is globally bounded.
+ This can be shown by contradiction.
+ If we assume that 
+\begin_inset Formula $\psi_{C}^{n+1}$
+\end_inset
+
+ is the global maximum at time 
+\begin_inset Formula $n+1$
+\end_inset
+
+ and it is greater than 
+\begin_inset Formula $\psi_{j}^{n}$
+\end_inset
+
+ for all cells 
+\begin_inset Formula $j$
+\end_inset
+
+ in the mesh then (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:convexScheme"
+
+\end_inset
+
+) and (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:convexParams"
+
+\end_inset
+
+) cannot both hold for cell 
+\begin_inset Formula $C$
+\end_inset
+
+.
+ It is necessary for this scheme to be bounded as it is used as the bounded
+ scheme for the flux corrected transport (section 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "subsec:FCT"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Section
+Stability Analysis of the Second-Order Implicit/Explicit Scheme
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:appxStability"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+MPDATA is a non-linear scheme but the infinite gauge version becomes the
+ linear Lax-Wendroff scheme and so von-Neumman stability analysis can be
+ applied.
+ In one dimension, for constant velocity, 
+\begin_inset Formula $u>0$
+\end_inset
+
+, and constant Courant number 
+\begin_inset Formula $c=u\Delta t/\Delta x$
+\end_inset
+
+, the one-dimensional implicit/explicit Lax-Wendroff scheme is
+\begin_inset Formula 
+\begin{eqnarray}
+\psi_{j}^{n+1} & = & \psi_{j}^{n}-c\left(1-\theta\right)\left(\psi_{j}^{n}-\psi_{j-1}^{n}\right)-c\theta\left(\psi_{j}^{n+1}-\psi_{j-1}^{n+1}\right)\label{eq:LWtheta}\\
+ & - & \frac{c}{2}\left(1-\chi c\right)\left(\psi_{j+1}^{n}-2\psi_{j}^{n}+\psi_{j-1}^{n}\right)\nonumber 
+\end{eqnarray}
+
+\end_inset
+
+where we showed in section 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "subsec:MPDATA_theta"
+
+\end_inset
+
+ that 
+\begin_inset Formula $\chi=1-2\theta$
+\end_inset
+
+ gives second-order accuracy.
+ From appendix 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "sec:appxBounded"
+
+\end_inset
+
+ we can see that we need 
+\begin_inset Formula $\theta>1-1/c$
+\end_inset
+
+ for stability of the first-order upwind part (the first two terms of (
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:LWtheta"
+
+\end_inset
+
+)).
+ In order to revert to the explicit version for 
+\begin_inset Formula $c\le1$
+\end_inset
+
+ and to transition smoothly to the implicit version we use
+\begin_inset Formula 
+\begin{equation}
+\theta=\begin{cases}
+0 & c\le1\\
+1-\frac{1}{c} & c>1
+\end{cases}
+\end{equation}
+
+\end_inset
+
+and analyse (
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:LWtheta"
+
+\end_inset
+
+) separately for these two cases.
+ Considering a Fourier mode with wavenumber 
+\begin_inset Formula $k$
+\end_inset
+
+, the amplification factor, 
+\begin_inset Formula $A$
+\end_inset
+
+, of (
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:LWtheta"
+
+\end_inset
+
+) is
+\begin_inset Formula 
+\begin{equation}
+A=\frac{1-c\left(\chi c-\theta\right)\left(1-\cos k\Delta x\right)-ic\left(1-\theta\right)\sin k\Delta x}{1+c\theta\left(1-\cos k\Delta x\right)+ic\theta\sin k\Delta x}.
+\end{equation}
+
+\end_inset
+
+For 
+\begin_inset Formula $\theta=0$
+\end_inset
+
+ and 
+\begin_inset Formula $\chi=1$
+\end_inset
+
+ we recover the usual Lax-Wendroff stability constraints of 
+\begin_inset Formula $c\in\left[-1,1\right]$
+\end_inset
+
+.
+ For 
+\begin_inset Formula $c\ge1$
+\end_inset
+
+ and 
+\begin_inset Formula $\theta=1-\frac{1}{c}$
+\end_inset
+
+ it can be shown that stability requires 
+\begin_inset Formula $\chi\in\left[0,\frac{2c-1}{c^{2}}\right]$
+\end_inset
+
+.
+ The stability range for 
+\begin_inset Formula $\chi$
+\end_inset
+
+ is compared with the second-order requirement for 
+\begin_inset Formula $\chi$
+\end_inset
+
+ in figure 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "fig:MPDATA_chi"
+
+\end_inset
+
+.
+ For behaviour as close as possible to second-order for the maximum range
+ of Courant numbers and for stability we use:
+\begin_inset Formula 
+\begin{equation}
+\chi=\max\left(1-2\theta,\ 0\right).
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset Graphics
+	filename figures/LWstability.pdf
+	width 75text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Comparison of the stability limits, the second-order requirement and the
+ value of 
+\begin_inset Formula $\chi$
+\end_inset
+
+ used for the MPDATA correction.
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MPDATA_chi"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
 
 \end_inset
 
