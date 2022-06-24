@@ -140,9 +140,9 @@ Time step restrictions based on advection have always posed a problem for
 \end_layout
 
 \begin_layout Standard
-CFL constraints can be particularly cruel where resolution is higher than
- it needs to be for accuracy, such as near the poles of a latitude-longitude
- mesh.
+CFL constraints can be particularly cruel where spatial resolution is higher
+ than it needs to be for accuracy, such as near the poles of a latitude-longitud
+e mesh.
  An early work around was to use polar filtering; artificially removing
  oscillations near the poles where mesh lines converge 
 \begin_inset CommandInset citation
@@ -282,6 +282,10 @@ Multi-tracer efficient.
 
 \begin_layout Enumerate
 Good parallel scaling.
+\end_layout
+
+\begin_layout Enumerate
+Locally conservative to machine precision.
 \end_layout
 
 \begin_layout Standard
@@ -429,7 +433,14 @@ g new extrema.
 
 \begin_layout Standard
 In atmospheric modelling, implicit time stepping for advection has been
- used to treat small, cut-cells stably at modest time steps 
+ used for vertical advection 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "BSF+11"
+
+\end_inset
+
+, to treat small, cut-cells stably at modest time steps 
 \begin_inset CommandInset citation
 LatexCommand citep
 before "e.g."
@@ -928,9 +939,9 @@ reference "eq:advectionGauss"
 \end_inset
 
 The explicit upwind term does not introduce unbounded solutions.
- In order for the second-order and divergence correction terms to maintain
- positivity, they are written as explicit upwind advection using an anti-diffusi
-ve flux, 
+ In order for the second-order and divergence correction terms to be sign-preser
+ving, they are written as explicit upwind advection using an anti-diffusive
+ flux, 
 \begin_inset Formula $V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f}$
 \end_inset
 
@@ -1043,7 +1054,7 @@ c=\frac{1}{2}\frac{\Delta t}{V_{C}}\sum_{f}|U_{f}|\label{eq:Courant}
 
 \end_inset
 
-so a Courant number limit of half guarantees positivity.
+so a Courant number limit of half guarantees sign-preservation.
  For a non-divergent velocity field:
 \begin_inset Formula 
 \begin{equation}
@@ -1119,12 +1130,18 @@ name "subsec:MPDATA_theta"
 \end_layout
 
 \begin_layout Standard
-We describe a blended implicit/explicit scheme to be a generalisation of
- Crank-Nicolson (or trapezoidal implicit) with off-centering 
+The blended implicit/explicit scheme is a generalisation of Crank-Nicolson
+ with off-centering 
 \begin_inset Formula $\theta$
 \end_inset
 
- which can vary in space and is defined on faces (for conservation):
+ which can vary in space.
+ 
+\begin_inset Formula $\theta$
+\end_inset
+
+ is defined on faces (for conservation) so the time stepping is defined
+ as:
 \begin_inset Formula 
 \begin{equation}
 \psi_{C}^{n+1}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta_{f}\right)\psi_{f}^{n}+\theta_{f}\psi_{f}^{n+1}\right\} U_{f}.\label{eq:advectionGauss-2}
@@ -1280,8 +1297,8 @@ The values of
  and the departure and arrival points can be approximated by
 \begin_inset Formula 
 \begin{eqnarray*}
-\psi_{d}^{n} & = & \psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{u}\right)\cdot\nabla\psi\\
-\psi_{a}^{n+1} & = & \psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{u}\right)\cdot\nabla\psi.
+\psi_{d}^{n} & = & \psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi\\
+\psi_{a}^{n+1} & = & \psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi.
 \end{eqnarray*}
 
 \end_inset
@@ -1302,7 +1319,7 @@ reference "eq:thetaPsiFace"
 \end_inset
 
 where 
-\begin_inset Formula $\mathbf{x}_{u}$
+\begin_inset Formula $\mathbf{x}_{\text{up}}$
 \end_inset
 
  is the centre of the cell upwind of face 
@@ -1338,7 +1355,7 @@ reference "sec:appxStability"
 \begin_inset Formula 
 \begin{eqnarray}
 \psi_{C}^{n+1} & = & \psi_{C}^{d}+\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{vup}}^{d}V_{f}\\
-\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{u}\right)\cdot\nabla\psi-\chi\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\right\} \label{eq:Vcorr}\\
+\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi-\chi\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\right\} \label{eq:Vcorr}\\
 \chi & = & \max\left(1-2\theta_{f},\ 0\right)
 \end{eqnarray}
 
@@ -1360,7 +1377,7 @@ reference "sec:appxStability"
 
 \end_inset
 
-) but on an arbitrary grid, some smoothing is needed when 
+) but on an arbitrary mesh, some smoothing is needed when 
 \begin_inset Formula $\theta>0$
 \end_inset
 
@@ -1464,7 +1481,7 @@ reference "sec:appxStability"
 
  shows that a linearised version of the implicit/explicit MPDATA is unconditiona
 lly stable on a uniform, one-dimensional grid.
- However this does not carry over onto an arbitrary grid.
+ However this does not carry over onto an arbitrary mesh.
  Therefore 
 \begin_inset Formula $V_{f}$
 \end_inset
@@ -1640,8 +1657,8 @@ key "SC86,KS17"
 \end_inset
 
 .
- This removes the non-linearity of MPDATA and means that MPDATA no longer
- preserves positivity.
+ This removes the non-linearity of MPDATA and means that MPDATA is no longer
+ sign preserving.
  
 \end_layout
 
@@ -1933,7 +1950,7 @@ One-dimensional Advection
 \begin_inset Float figure
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
@@ -2160,7 +2177,7 @@ s applied to implicit/explicit time stepping.
 \begin_inset Float figure
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
@@ -4217,8 +4234,8 @@ reference "fig:fullDeformation2p5"
 \end_inset
 
  show the Courant number).
- These large Courant numbers do not lead to instability, a lack of positivity
- or visible artefacts in the solution.
+ These large Courant numbers do not lead to instability, a lack of sign-preserva
+tion or visible artefacts in the solution.
  The large Courant numbers are removed on the rotated, skipped latitude
  longitude mesh although some values above 0.8 are visible at 
 \begin_inset Formula $t=2.5$
@@ -4228,7 +4245,7 @@ reference "fig:fullDeformation2p5"
  On the cubed-sphere, the Courant number is largest near the cube corners
  due to mesh distortions and smaller cell areas.
  Some mesh imprinting is visible along the cube edges although this does
- not lead to a lack of positivity.
+ not lead to a lack of sign-preservation.
  The hexagonal and triangular icosahedral meshes are the most uniform meshes
  of the sphere and so no locally high Courant numbers are visible at 
 \begin_inset Formula $t=2.5$
@@ -4646,7 +4663,7 @@ name "fig:fullDeformation2p5"
 \end_layout
 
 \begin_layout Standard
-MPDATA is, by design, positivity preserving but not bounded above or monotonic.
+MPDATA is, by design, sign-preserving but not bounded above or monotonic.
  The implicit/explicit MPDATA retains this feature on all of the meshes
  tested and displayed in figure 
 \begin_inset CommandInset ref
@@ -4911,9 +4928,9 @@ key "LUJ+14"
 \end_layout
 
 \begin_layout Standard
-Better accuracy at the expense of positivity can be achieved with MPDATA
- by using the infinite gauge variant (equivalent to Lax-Wendroff) which
- works for the 
+Better accuracy at the expense of sign-preservation can be achieved with
+ MPDATA by using the infinite gauge variant (equivalent to Lax-Wendroff)
+ which works for the 
 \begin_inset Formula $\theta$
 \end_inset
 
@@ -5577,7 +5594,7 @@ key "TB15"
 \begin_inset Float figure
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Graphics

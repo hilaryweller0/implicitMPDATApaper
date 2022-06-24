@@ -1,0 +1,23 @@
+\begin{picture}(0,0)%
+\includegraphics{figures/departureArrival}%
+\end{picture}%
+\setlength{\unitlength}{4144sp}%
+%
+\begingroup\makeatletter\ifx\SetFigFont\undefined%
+\gdef\SetFigFont#1#2#3#4#5{%
+  \reset@font\fontsize{#1}{#2pt}%
+  \fontfamily{#3}\fontseries{#4}\fontshape{#5}%
+  \selectfont}%
+\fi\endgroup%
+\begin{picture}(5409,3849)(1624,-5293)
+\put(3504,-5071){\makebox(0,0)[lb]{\smash{{\SetFigFont{34}{40.8}{\rmdefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\Delta t\ \mathbf{u}$}%
+}}}}
+\put(2619,-3923){\makebox(0,0)[lb]{\smash{{\SetFigFont{34}{40.8}{\rmdefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{x}_u$}%
+}}}}
+\put(2701,-3436){\makebox(0,0)[lb]{\smash{{\SetFigFont{34}{40.8}{\rmdefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{x}_d$}%
+}}}}
+\put(4771,-4066){\makebox(0,0)[lb]{\smash{{\SetFigFont{34}{40.8}{\rmdefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{x}_a$}%
+}}}}
+\put(3931,-3451){\makebox(0,0)[lb]{\smash{{\SetFigFont{34}{40.8}{\rmdefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{u}_f^{\nicefrac{1}{2}}$}%
+}}}}
+\end{picture}%

@@ -36,9 +36,7 @@ I have added some more discussion of the implicit TVD literature.
 
 6. After eqn 11: Shouldn’t this be “less than two”? See, eq. (A10) and the accompanying discussion in Smolar&Szmelter 2005.
 
-HW: I really cannot see how A10 follows from A9 in Smolar&Szmelter 2005 and in fact, surely one dimensional finite difference with constant velocity and a uniform grid is a counter example. The forward-time, backward-space 1D FD scheme requires Courant number between 0 and 1 for convexity.
-
-Note also that I only want to show positivity for divergent flows, not convexity for non-divergent flows.
+HW: I have redefined the Courant number here so that the limit is 0.5 for divergent velocity fields and one for divergence free velocity fields, in line with SS05 and finite difference schemes.
 
 7. Eqn 13: I would use epsilon and in the text explain that it is a small constant e.g. 10^{-16}. 
 
@@ -53,23 +51,23 @@ HW: I have extended to use of "theta scheme" to mean variable theta. The variabl
 
 9. End of section 2.3: If my understanding is correct (see the sticky note at the bottom of page 5), then this translates to C < 0.4 in standard notations of Cartesian grids. Is this right?
 
-HW. No. c<0.8. Equivalent to SS05 appx A.1.
+HW. No. c<0.8. This is now explained properly I think. However I have changed the limit to 0.75 as I have reduced some of the other smoothing.
 
 10. Section 2.4: I presume 10 assumes that the transported field is about 1. This gauge is not very large. Such an explicit constant addition compares well with the infinite one at about const=100 value. Also, when using explicit constant addition and the field of a variable sign, one should decompose Psi into the non-negative Psi^+=max(Psi,0) and non-positve Psi^- = min(Psi,0), transport them separately, and then compose them back. This preserves symmetries near zeros, but doubles the cost of advection. This is the reason why infinite gauge is derived as a limit at c-> oo. You do not need to derive the formal gauge for this paper, but the paper should ackonwledge that it uses an approximate infinite gauge, to not confuse the reader. 
 
-HW: I would like to repeat the simulations that use a gauge to use the infinite gauge with no upwinding in the anti-diffusive correction (ie LW). 
+HW: I have repeated the gauge results using an infinite gauge. 
 
 11. Section 2.5: FYI: in the published MPDATA papers with my collegues we typically refer to limiters “in the spirt of FCT.” This is because for the MPDATA we do not limit fluxes but the antidiffusive velocites. For infinite-gauge MPDATA we are closer to the standard FCT. Still, we apply the concepts of FCT but customized to MPDATA schemes. 
 
-HW: This sounds like a trivial distinction. The fluxes are just the anti-diffusive velocities multiplied by Psi_up. So does it make any difference which one you consider to be limited?
+HW: I think I will keep the wording the same. I am calling the FCT here FCT for implicit advection.
 
 12: End of section 2: Perhaps I missed it, but I do not recall seeing yet any text regarding matrix inversion or solving an elliptic problem. However, as it is an inherent part of the implicit advection,  it should be discussed (or at least announced) together with the design of the scheme.
 
-HW: Yes, I must do this.
+HW: Added new section 2.4.
 
 13. How about “mesh” rather than “grid”? According to dictionaries grid  implies rectangular connectivity, whereas mesh is a more general term; i.e., every grid is a mesh but not vice versa. So, to be precise, none of the meshes shown in the figure is a proper grid. Pure longitude-latitdue mesh is a grid because it is isomorphic with a  Cartesian grid.
 
-HW: Yup. "Grid", "implicit" and explicit have too many meanings in modelling. A grid is also a function space (ie A-grid/C-grid).
+HW: Yup. "Grid", "implicit" and explicit have too many meanings in modelling. A grid is also a function space (ie A-grid/C-grid). I have changed "grid" to "mesh".
 
 14. Section 3.1: This paragraph should include a straightforward statement that in this paper several meshes are employed and these are 1-4. Otherwise the reader (who already forgot the title) wonders what is the purpose of this 1 to 4 discussion. Such a sentence appears now only at the very end of this subsection. 
 
@@ -85,14 +83,8 @@ It is all about advection, but flow over topography has much more than advection
 If it were my paper, I would start with simple 1D and 2D tests, document all the important properties of the scheme there, and show the sphere only at the end. Did you do any 3D problem? 
 
 HW: I think that the deformational flow on the sphere test cases are important and I have already skipped some of them. 
-1D is too easy because you do not get the Courant number varying in space.
-I could use a planar test case to show the order of convergence but it seems simpler to use the deformational flow on the sphere.
-I want to give enough space to showing that this works on different meshes of the sphere.
-
-It would be good to do a 3D problem. KUJ14
-Q. J. R. Meteorol. Soc. 140: 1279–1293, April 2014 B DOI:10.1002/qj.2208
-Dynamical core model intercomparison project: Tracer transport test cases.
-However these look difficult to set up and challenging. Would it be worth setting up something simpler that still shows the properites of MPDATA in 3D? How to make the velocity field divergence free in 3D? Need a 3D stream function. The above paper doesn't supply a 3D stream function.
+I have added a 1D problem with uniform velocity but a variable resoution grid so that the Courant number varies in space.
+I do not plan to do 3D in this paper.
 
 Christian's comments
 
@@ -127,18 +119,17 @@ HW: Done
 
 - Page 7, Section 2.3: First I thought the extra filtering is somewhat unsatisfactory, but I was surprised how little damage this causes with the restriction to high Courant numbers, it seems to do the job!
 
-HW: I am unhappy about the arbitraryness of the filtering. It is not guaranteed to lead to stable solutions. I have spent a long time fiddling but it is not robust.
+HW: I have made some improvements to the filtering since the previous draft and also justified it a bit. I have added an appendix showing that the implicit MPDATA is unconditionally stable in 1D with uniform velocity. I argue that the filtering is needed due to distortions in the 2D grid. This encourages me that it is ok for the filtering to be local. 
 
 - Page 8, Section 2.4: The MPDATA gauge may be approached by adding the large constant. However, this is not the infinite-gauge we usually use in FVM. The infinite-gauge does not use an upwind scheme for the anti-diffusive step and there is only one anti-diffusive step (in contrast to the standard sign-preserving version which can have multiple corrective steps but usually we never use that anyhow). You can find a comparison of the standard and infinite-gauge versions on unstructured meshes in KS2017 (Eqs. 25+26 versus Eqs. 31+32). My guess is that the proper infinite-gauge would provide better results, but this is not crucial for the present paper. We just need to add a comment that the applied gauge is not the usual infinite-gauge form.
 
-HW: I am re-running with the infinite guage version and with one iteration. The results are a tiny bit better (so far).
+HW: I have replaced the finite gauge results I had before with true infinite gauge results.
 
 - Page 8, Section 2.5: The discussion and developed approach for FCT with implicit time stepping nicely reverts back from limit Psi_d to the neighbours where Courant number <=1, do I see this correctly?
 
 HW: No, I am afraid not. You would need to decide for each cell what bounds to use based on the local Courant number. I haven't coded this. I guess that you could use the explicit version for a cell if all of the faces of that cell were treated explicitly.
 
-- Section 3: I think the deformational flow and slotted cylinder tests are sufficient together with the presented analysis. The possible magnitude of stable Courant numbers is really impressive, have not seen this before (the largest Courant numbers I have ever seen with the SL advection
-in the IFS was 23, but only in the vertical direction).
+- Section 3: I think the deformational flow and slotted cylinder tests are sufficient together with the presented analysis. The possible magnitude of stable Courant numbers is really impressive, have not seen this before (the largest Courant numbers I have ever seen with the SL advection in the IFS was 23, but only in the vertical direction).
 
 HW. Thanks. Agreed. Piotr mentioned a 3D test which would be great but time consuming to set up if it included any meaningful challenges such as the DCMIP test cases.
 
@@ -148,37 +139,45 @@ HW: Large Courant numbers are contours in figs 4,7. Maybe the contours need to b
 
 - Page 15: “These simulations use two MPDATA corrections per time step”. As mentioned before, the usual infinite-gauge uses only one corrective step, so it is just important to explain in Section 2.4 that gauge vs inf-gauge, as already addressed above.
 
-HW: Re-running with infinite gauge and 1 iteration. Difference in 4th DP of l2 error norm.
+HW: Re-run with infinite gauge and 1 iteration. Difference in 4th DP of l2 error norm.
 
 - Page 20, Section 3.4: This will be highly interesting section and definitely required.
 
+HW: It is short and included now.
 
 Additional minor comments:
--
--
--
--
--
--
--
--
--
--
--
-Page 1, 2 nd paragraph, 1 st sentence: We could add “spatial” to write “...cruel where spatial
-resolution..”.
+
+Page 1, 2 nd paragraph, 1 st sentence: We could add “spatial” to write “...cruel where spatial resolution..”.
+HW: done
+
 Page 2, list: 8. Conservation
-Page 2: Haven’t found the time, but I can complement a bit the MPDATA background, just a
-few aspects (not the most important thing though, already really nice).
-Page 3, background on implicit time stepping: COSMO uses implicit vertical advection for
-some time, I will provide you a reference to that. Not sure if we should add that a reference to
-implicit advection for sedimentation in cloud microphysics, probably not important. In the
-second paragraph remove one “new” from “new new”.
+HW: done
+
+Page 2: Haven’t found the time, but I can complement a bit the MPDATA background, just a few aspects (not the most important thing though, already really nice).
+
+
+Page 3, background on implicit time stepping: COSMO uses implicit vertical advection for some time, I will provide you a reference to that. Not sure if we should add that a reference to implicit advection for sedimentation in cloud microphysics, probably not important.
+
+HW> Thanks. Added. 
+
+In the second paragraph remove one “new” from “new new”.
+HW: done
+
 Page 6, Section 2.2: First sentence should be shortened.
+HW: Thanks. Done
+
 Page 6, Section 2.2, 2 nd paragraph: “ante-diffusive” -> “anti-diffusive”.
+HW: Thanks. Fixed
+
 Page 6, Eq. before (17): x_u should probably be x_up.
-Page 7, last equation: u_n is not used elsewhere so u_f \dot S_f may be directly inserted in the
-expression for c_f.
+HW: Thanks fixed. 
+
+Page 7, last equation: u_n is not used elsewhere so u_f \dot S_f may be directly inserted in the expression for c_f.
+HW: Thanks. No references to u_n now. 
+
 Page 8, paragraph before Eq. (23): “larger that the correction” -> “larger than the correction”
+HW: Fixed
+
 Page 15, paragraph 5: “...at less that second...” -> “...at less than second...”
 Not sure if we should say “sign-preserving” instead of “positivity”, I’m fine with both.
+HW: I have changed to "sign-preserving" throughout.
