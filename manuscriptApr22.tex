@@ -1,0 +1,1183 @@
+%% LyX 2.2.4 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[12pt,times]{extarticle}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\usepackage{color}
+\usepackage{units}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[authoryear]{natbib}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+%% A simple dot to overcome graphicx limitations
+\newcommand{\lyxdot}{.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+%\newcommand{\nicefrac}[2]{\ensuremath ^{#1}\!\!/\!_{#2}}
+\usepackage{fancybox}
+\usepackage[export]{adjustbox}
+
+\usepackage{todonotes}
+%\usepackage{afterpage}
+
+%\usepackage[switch]{lineno}
+
+\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
+
+\newcommand\BibTeX{{\rmfamily B\kern-.05em \textsc{i\kern-.025em b}\kern-.08em
+T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+%\usepackage{moreverb}
+
+\usepackage{flushend}
+
+\makeatother
+
+\begin{document}
+
+\title{Adaptively Implicit MPDATA Advection for Arbitrary Courant numbers
+and Meshes}
+
+\author{Hilary Weller, James Woodfield, Christian K\"uhnlein and Piotr K.
+Smolarkiewicz}
+\maketitle
+
+\section{Introduction}
+
+\subsection*{Motivation}
+
+Time step restrictions based on advection have always posed a problem
+for models of the atmosphere. The Courant-Friedrichs-Lewy (CFL) condition
+states that explicit Eulerian schemes will have time step restrictions
+based on the size of the domain of dependence. Typically this means
+that explicit schemes cannot run with a Courant number greater than
+one or thereabouts. This is equivalent to saying that an advected
+quantity cannot be moved by more than one mesh cell (or grid box)
+in one time step.
+
+CFL constraints can be particularly cruel where resolution is higher
+than it needs to be for accuracy, such as near the poles of a latitude-longitude
+mesh. An early work around was to use polar filtering; artificially
+removing oscillations near the poles where mesh lines converge \citep{CD91}.
+Polar filtering has been improved and used more recently in magneto-hydro-dynamics
+by \citet{ZSL+19}. However polar filtering led to parallel scaling
+bottlenecks and mistrust of solutions near the poles in models of
+the atmosphere. The UK Met Office gained accuracy and efficiency by
+replacing their model employing polar filtering with a semi-implicit
+, semi-Lagrangian (SISL) model to avoid time step restrictions on
+a latitude-longitude mesh \citep{DCM+05}. SISL eases time step constraints
+by treating acoustic and gravity waves implicitly while the advection
+is solved with the semi-Lagrangian method which is stable, accurate
+and efficient for long time steps but not conservative. The lack of
+conservation is regarded as inadequate for climate modelling and is
+associated with spurious features such as eternal fountains which
+involve a positive feedback loop that creates moisture in convectively
+unstable columns \citet{ZA20}.
+
+The requirement to run stably with large Courant numbers is less severe
+now that weather and climate models have largely moved away from latitude-longitude
+meshes in favour of quasi-uniform meshes such as the cubed sphere
+and icosahedral meshes \citep{UJK+17}. However, the problem remains
+severe in the vertical direction where mesh spacing can be fine and
+large vertical velocities can occur when atmospheric convection is
+resolved. A solution in the vertical direction is to use Lagrangian
+floating levels \citep{Lin04} that are conservatively mapped back
+to the fixed Eulerian mesh. Lagrangian floating levels are equivalent
+to conservative semi-Lagrangian \citep{HLM11} which can be made efficient
+for large Courant numbers in one dimension and consequently can work
+on tensor product meshes \citep[eg.][]{LLM96}. These are related
+to the Arbitrary Lagrangian-Eulerian (ALE) method \citep[eg. ][]{HAC97}
+which solves equations in a Lagrangian frame and them remaps the solution
+back to the original mesh. However ALE methods suffer from time step
+restrictions associated with avoiding mesh distortions.
+
+Due to the difficulties in allowing long time steps while maintaining
+exact local conservation on arbitrary meshes, it is worth considering
+implicit time stepping for advection. The aim of this paper is to
+present an advection scheme with the following properties:
+\begin{enumerate}
+\item Stable for very large Courant numbers.
+\item Applicable on arbitrary meshes.
+\item Similar cost and accuracy to explicit schemes when the Courant number
+is below one. 
+\item Monotonic when required.
+\item At least first-order accurate where the Courant number is large.
+\item Multi-tracer efficient.
+\item Good parallel scaling.
+\end{enumerate}
+This paper proposes the use of blended implicit/explicit time stepping
+combined with the MPDATA advection scheme (multidimensional positive
+definite advection transport algorithm). However the methods for combining
+implicit and explicit and the method for achieving monotonicity should
+translate to other explicit advection schemes.
+
+\subsection*{Background on MPDATA}
+
+MPDATA was introduced by \citet{Smol83,Smol84} and reviewed by \citet{SM98}.
+MPDATA consists of a first-order upwind, explicit step to solve the
+advection equation followed by a correction step to remove the first-order
+error. An anti-diffusive velocity is calculated and the solution of
+the first-order step is corrected by advecting it with the anti-diffusive
+velocity. The corrective transport is also applied using explicit
+first-order upwind differencing so the solution remains positive definite.
+The anti-diffusive velocity is necessarily divergent so the scheme
+is not bounded above. The resulting scheme is second-order accurate
+in space and time and stable for a Courant number less than one. \citet{SS05b}
+extended MPDATA to unstructured meshes while retaining second-order
+accuracy.
+
+In order to use MPDATA to advect vectors and other signed quantities
+and also to improve accuracy, MPDATA gauge effectively advects a quantity
+plus a constant in order to move values away from zero \citep{SC86},
+meaning that the advected quantity is no longer bounded below by zero.
+Monotonicity can be enforced using flux-corrected transport \citep{SG90,Zal79}.
+\citet{KS17} combine the temporal correction with the divergence
+correction to create an anti-diffusive velocity that is defined only
+in terms of fluxes.
+
+\subsection*{Background on Implicit Time Stepping}
+
+Implicit time stepping is ubiquitous in atmospheric modelling for
+solving the terms of the equations of motion responsible for fast
+waves such as gravity and acoustic waves. However, implicit time stepping
+has been used very little for advection in atmosphere and ocean modelling.
+Implicit time stepping for advection in the mathematics and engineering
+literature will be discussed first and then we will return to its
+uses to date in atmosphere and ocean modelling.
+
+Implicit time stepping for advection has a severe order barrier; no
+implicit method exists with order greater than one which is monotonic
+for all time steps \citep{GST01}. Higher order implicit multi-stage
+(Runge-Kutta) and multi-step schemes exist that are unconditionally
+linearly stable but if we additionally require monotonicity (no new
+extrema generated), then higher-order implicit methods have time step
+restrictions, known as radii of monotonicity. As with spatial discretisation,
+high order implicit time stepping has been non-linearly combined with
+first order implicit time stepping to try to break the order barrier
+and increase the radius of monotoncity. \citet{YWH85,Yee87} proposed
+implicit TVD (total variation diminishing) schemes for solving hyperbolic
+equations and achieved high accuracy for large Courant numbers. However
+they could not find a second-order scheme that was guaranteed both
+TVD and conservative for non-constant coefficient advection. \citet{MB17}
+used flux corrected transport \citep[FCT,][]{Zal79} to improve temporal
+accuracy in implicitly solved small cells without generating new extrema. 
+
+In atmospheric modelling, implicit time stepping for advection has
+been used to treat small, cut-cells stably at modest time steps \citep[e.g.][]{JKW11}
+and more recently to treat isolated strong updrafts stably \citep{WS20}.
+\citet{WS20} and \citet{Shch15} avoided the order barriers by limiting
+order of accuracy to first where ever implicit time stepping for advection
+was used. The lack of accuracy was not considered problematic because
+of the sparsity of the use of implicit advection. \citet{CWPS17}
+compared implicit advection with dimensionally split, flux-form semi-Lagrangian
+advection and found that the dimensionally split scheme was more accurate
+and more efficient than implicit advection for all Courant numbers.
+However, this was not a like for like comparison; the dimensionally
+split scheme was a higher-order accurate scheme, limited to tensor
+product meshes and suffered from mesh imprinting errors on distorted
+meshes. 
+
+\section{An Implicit/Explicit MPDATA}
+
+The version of explicit MPDATA and the blended implicit/explicit MPDATA
+defined here are implemented using the OpenFOAM library (\url{https://openfoam.org/})
+using standard OpenFOAM operators and linear equation solvers. The
+code is available as part of the AtmosFOAM repository (\url{https://github.com/AtmosFOAM/})
+compiled with OpenFOAM7. 
+
+\subsection{Explicit MPDATA on an Arbitrary Mesh}
+
+\begin{figure}
+\noindent \begin{centering}
+\scalebox{0.5}[0.5]{\input{figures/cells.pdftex_t}}
+\par\end{centering}
+\caption{Two cells in an arbitrary mesh. $\mathbf{x}_{C}$ and $\mathbf{x}_{N}$
+are the cell centres of cell $C$ and its neighbour, $N$, over face
+$f$ and $\mathbf{x}_{f}$ is the face centre. $\mathbf{S}_{f}$ is
+the face area vector, normal to face $f$ with magnitude equal to
+the face area. $\mathbf{u}$ is the velocity and $\mathbf{x}_{d}$
+is the departure point for face $f$ at time $n+\nicefrac{1}{2}$
+(i.e. the centre of the volume swept through the face between times
+$n$ and $n+1$).\label{fig:cells}}
+\end{figure}
+
+The description of the explicit scheme is consistent with basic MPDATA
+principles \citep[e.g.][]{SS05b}, but introduces a novel derivation
+based on a flux-form semi-Lagrangian method and assuming an arbitrary
+mesh in Cartesian co-ordinates rather than using co-ordinate transforms.
+We will describe MPDATA for solving the linear advection equation
+for advected quantity $\psi$ with velocity field $\mathbf{u}$:
+\begin{equation}
+\frac{\partial\psi}{\partial t}+\nabla\cdot\left(\mathbf{u}\psi\right)=0.\label{eq:linearAdvection}
+\end{equation}
+This is solved using Gauss's divergence theorem on an arbitrary mesh
+to go from time level $n$ to $n+1$ a time step $\Delta t$ apart:
+\begin{equation}
+\psi_{C}^{n+1}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{f}^{n+\nicefrac{1}{2}}U_{f}\label{eq:advectionGauss}
+\end{equation}
+where $\psi_{C}$ is the cell mean value of $\psi$ in cell $C$,
+$V_{C}$ is the volume of cell $C$, $f\in C$ are the faces of cell
+$C$, $\psi_{f}^{n+\nicefrac{1}{2}}$ is the value of $\psi$ at face
+$f$ at time $n+\nicefrac{1}{2}$, $\mathbf{u}_{f}$ the velocity
+at face $f$ and $\mathbf{S}_{f}$ is the face area vector \textemdash{}
+the outward pointing vector normal to face $f$ with magnitude equal
+to the area of face $f$ (fig \ref{fig:cells}). $U_{f}=\mathbf{u}_{f}\cdot\mathbf{S}_{f}$
+is the volume flux over face $f$. In this derivation of MPDATA, $\psi_{f}$
+is evaluated at the departure point of the face centre at time $n$.
+The departure point, $\mathbf{x}_{d}$, is the centre of the volume
+swept through the face between times $n$ and $n+1$ which is approximated
+by the point a distance $\mathbf{u}\Delta t/2$ upstream of the face
+centre:
+\begin{equation}
+\mathbf{x}_{d}=\mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}+O\left(\Delta t\right)^{2}\label{eq:departure}
+\end{equation}
+where $\mathbf{x}_{f}$ is the face centre (see fig \ref{fig:cells}).
+The velocity, $\mathbf{u}_{f}$, is evaluated at time $n+\nicefrac{1}{2}$
+at the face. In this paper the wind is prescribed. In a more complete
+model, $\mathbf{u}_{f}^{n+\nicefrac{1}{2}}$ would be evaluated from
+velocities at known positions and times. The dependent variable, $\psi$,
+is evaluated at the departure point using the upwind cell centre value
+of $\psi$, the gradient of $\psi$ and the velocity divergence:
+\begin{equation}
+\psi_{f}^{n+\nicefrac{1}{2}}=\psi_{d}^{n}=\psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi^{n}-\frac{\Delta t}{2}\psi_{\text{up}}^{n}\nabla\cdot\mathbf{u}+O\left(\Delta x^{2},\Delta t^{2}\right)\label{eq:PsiDep}
+\end{equation}
+where $\psi_{\text{up}}$ is the value of $\psi$ in the cell upwind
+of face $f$. $\nabla\psi$ can be calculated in cells ($C$) to second-order
+accuracy on an arbitrary mesh using a least-squares approximation:
+\begin{equation}
+\nabla\psi=\sum_{f\in C}\mathbf{g}_{f}\left(\psi_{N}-\psi_{C}\right)
+\end{equation}
+where $\psi_{N}$ is $\psi$ in the neighbour of cell $C$ across
+face $f$ and where $\mathbf{g}_{f}$ is a vector calculated for each
+face of cell $C$ based entirely on the local mesh geometry:
+\begin{eqnarray*}
+\mathbf{g}_{f} & = & \left(1-w_{f}\right)\frac{|\mathbf{S}_{f}|}{|\mathbf{x}_{N}-\mathbf{x}_{C}|^{2}}D_{C}^{-1}\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\\
+\text{where }w_{f} & = & \frac{|\mathbf{S}_{f}\cdot(\mathbf{x}_{N}-\mathbf{x}_{f})|}{|\mathbf{S}_{f}\cdot(\mathbf{x}_{N}-\mathbf{x}_{f})|+|\mathbf{S}_{f}\cdot(\mathbf{x}_{f}-\mathbf{x}_{C})|}\ \text{(interpolation weights)}\\
+\text{where }D_{C} & = & \sum_{f\in C}\left(1-w_{f}\right)\frac{|\mathbf{S}_{f}|}{|\mathbf{x}_{N}-\mathbf{x}_{C}|^{2}}\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)^{T}
+\end{eqnarray*}
+This is the least squares gradient implemented in the OpenFOAM library.
+Equations (\ref{eq:departure}) and (\ref{eq:PsiDep}) are substituted
+in to (\ref{eq:advectionGauss}) to give a scheme that is second-order
+accurate in space and time but not positive definite, equivalent to
+a Law-Wendroff scheme:
+\begin{eqnarray}
+\psi_{C}^{n+1} & \approx & \psi_{C}^{n}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{up}}^{n}U_{f}}_{\text{explicit upwind}}-\underbrace{\frac{\Delta t}{V_{C}}\sum_{f\in C}\left(\mathbf{x}_{f}\!-\!\mathbf{x}_{\text{up}}\right)\cdot\left(\nabla\psi^{n}\right)U_{f}}_{\text{spatial corection}}+\underbrace{\frac{\Delta t^{2}}{2V_{C}}\sum_{f\in C}\left(\nabla\cdot\left(\mathbf{u}\psi^{n}\right)\right)U_{f}}_{\text{temporal correction}}\label{eq:advectionGauss-1}
+\end{eqnarray}
+The explicit upwind term does not introduce unbounded solutions. In
+order for the second-order and divergence correction terms to maintain
+positivity, they are written as explicit upwind advection using an
+anti-diffusive flux, $V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f}$, which
+transforms the scheme from Lax-Wendroff to MPDATA and is written in
+two stages:
+\begin{eqnarray}
+\text{explicit diffusive step: }\psi_{C}^{d} & = & \psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{up}}^{n}U_{f}\\
+\text{explicit correction: }\psi_{C}^{n+1} & = & \psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f}=\mathbf{v}_{f}\cdot\mathbf{S}_{f} & = & \frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi-\frac{\Delta t}{2}\nabla\cdot\left(\psi\mathbf{u}\right)\right\} \label{eq:antiDfluxExp}
+\end{eqnarray}
+and where $\psi_{\text{vup}}$ is $\psi$ in the upwind cell where
+the upwind direction is defined by the sign of $V_{f}$. As $\psi$
+is always positive, there is no ambiguity in the sign of $V_{f}$.
+The anti-diffusive flux, $V_{f}$, can be calculated iteratively,
+using first $\psi^{d}$ and subsequent iterations use the most up
+to date version of $\psi^{n+1}$. Eqn (\ref{eq:antiDfluxExp}) is
+a continuous version of the expression for the anti-diffusive velocity
+in eqn (13) of \citet{SS05b}. The discretisaions of gradients, divergences
+and $\psi_{\text{denom}}$ described here give exactly the same expression
+as \citet{SS05b} on a uniform structured grid but the treatment of
+non-uniformity and skewness are slightly different here.
+
+The explicit diffusive step has a Courant number limit of half for
+a divergent velocity field and one for a non-divergent velocity field.
+This can be seen by writing the advection as the sum of outward and
+inward fluxes:
+\begin{eqnarray}
+\psi_{C}^{d} & = & \psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}\psi_{C}^{n}U_{f}+\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\psi_{N}^{n}|U_{f}|\\
+ & = & \psi_{C}^{n}\left\{ 1-\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\right\} +\frac{\Delta t}{V_{C}}\sum_{U_{f}<0}\psi_{N}^{n}|U_{f}|.
+\end{eqnarray}
+For a divergent velocity field, $\psi_{C}^{d}$ is positive when the
+term in curly brackets is non-negative which happens when $\frac{\Delta t}{V_{C}}\sum_{U_{f}>0}U_{f}\le1$.
+The Courant number on an arbitrary mesh is defined as
+\begin{equation}
+c=\frac{1}{2}\frac{\Delta t}{V_{C}}\sum_{f}|U_{f}|\label{eq:Courant}
+\end{equation}
+so a Courant number limit of half guarantees positivity. For a non-divergent
+velocity field:
+\begin{equation}
+\sum_{U_{f}>0}U_{f}=\sum_{U_{f}<0}|U_{f}|=c
+\end{equation}
+so the solution is bounded when the Courant number is less than one.
+
+For the explicit correction to be positive definite and stable, the
+anti-diffusive velocity needs to obey the same Courant number restriction.
+Considering the case with uniform velocity in one dimension and uniform
+$\nabla\psi$ and remembering that $\psi\ge0$ and $c\in[0,1]$, this
+is equivalent to
+\begin{eqnarray*}
+c\left(1-c\right)\frac{|\psi_{C}-\psi_{N}|}{2\psi_{\text{denom}}} & \le & 1.
+\end{eqnarray*}
+Following \citet{SS05b}
+\begin{equation}
+\psi_{\text{denom}}=\frac{1}{2}\left(\psi_{C}+\psi_{N}+\varepsilon\right)
+\end{equation}
+where $\varepsilon$ is a small number. This ensures that explicit
+MPDATA is positive definite. The results presented here use $\varepsilon=10^{-16}$.
+
+\subsection{Blended Implicit/Explicit MPDATA\label{subsec:MPDATA_theta}}
+
+We describe a blended implicit/explicit scheme to be a generalisation
+of Crank-Nicolson (or trapezoidal implicit) with off-centering $\theta$
+which can vary in space and is defined on faces (for conservation):
+\begin{equation}
+\psi_{C}^{n+1}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta_{f}\right)\psi_{f}^{n}+\theta_{f}\psi_{f}^{n+1}\right\} U_{f}.\label{eq:advectionGauss-2}
+\end{equation}
+This is second order in time only for $\theta=\frac{1}{2}$. We will
+find the MPDATA anti-diffusive flux that corrects a scheme which is
+first-order accurate in space and off-centered by $\theta$ in time.
+So the first step, before the MPDATA correction, is:
+\begin{equation}
+\psi_{C}^{d}=\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{f\in C}\left\{ \left(1-\theta_{f}\right)\psi_{\text{up}}^{n}+\theta_{f}\psi_{\text{up}}^{d}\right\} U_{f}.\label{eq:thetaUp}
+\end{equation}
+The proof that this first step gives positive solutions and bounded
+solutions for non-divergent velocity fields on arbitrary meshes is
+in appendix \ref{sec:appxBounded}.
+
+\begin{figure}
+\noindent \begin{centering}
+\scalebox{0.5}[0.5]{\input{figures/departureArrival.pdftex_t}} \scalebox{0.4}[0.4]{\input{figures/departureArrivalLargec.pdftex_t}}
+\par\end{centering}
+\caption{The volume that is swept through face $f$ in one time step and the
+departure and arrival points, $\mathbf{x}_{d}$ and $\mathbf{x}_{a}$
+for small (left) and large (right) Courant numbers.\label{fig:departureArrival}}
+\end{figure}
+
+To find the second-order approximation of $\psi_{f}^{n+1/2}$, we
+consider a linear combination of $\psi$ at the departure point at
+time $n$ and $\psi$ at the arrival point at time $n+1$:
+\begin{equation}
+\psi_{f}^{n+1/2}=\left(1-\theta_{f}\right)\psi_{d}^{n}+\theta_{f}\psi_{a}^{n+1}\label{eq:thetaPsiFace}
+\end{equation}
+where the locations of the departure and arrival points are shown
+in fig \ref{fig:departureArrival} and are given by
+\begin{eqnarray*}
+\mathbf{x}_{d} & = & \mathbf{x}_{f}-\frac{\Delta t}{2}\mathbf{u}_{f}\\
+\mathbf{x}_{a} & = & \mathbf{x}_{f}+\frac{\Delta t}{2}\mathbf{u}_{f}
+\end{eqnarray*}
+The values of $\psi$ and the departure and arrival points can be
+approximated by
+\begin{eqnarray*}
+\psi_{d}^{n} & = & \psi_{\text{up}}^{n}+\left(\mathbf{x}_{d}-\mathbf{x}_{u}\right)\cdot\nabla\psi\\
+\psi_{a}^{n+1} & = & \psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{a}-\mathbf{x}_{u}\right)\cdot\nabla\psi.
+\end{eqnarray*}
+Substituting these into (\ref{eq:thetaPsiFace}) gives
+\begin{eqnarray}
+\psi_{f}^{n+\nicefrac{1}{2}} & = & \left(1-\theta_{f}\right)\psi_{\text{up}}^{n}+\theta_{f}\psi_{\text{up}}^{n+1}+\left(\mathbf{x}_{d}-\mathbf{x}_{\text{up}}\right)\cdot\nabla\psi^{n}-\left(1-2\theta_{f}\right)\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\label{eq:PsiDep-1}
+\end{eqnarray}
+where $\mathbf{x}_{u}$ is the centre of the cell upwind of face $f$.
+This correction is not stable for Courant number, $c>2$ or $\theta>\frac{1}{2}$
+(appendix \eqref{sec:appxStability}). For stability for all $c$
+and second-order accuracy where $\theta\le\frac{1}{2}$ the correction
+step is:
+\begin{eqnarray}
+\psi_{C}^{n+1} & = & \psi_{C}^{d}+\frac{\Delta t}{V_{C}}\sum_{f\in C}\psi_{\text{vup}}^{d}V_{f}\\
+\text{where }V_{f} & = & \mathbf{v}_{f}\cdot\mathbf{S}_{f}=\frac{U_{f}}{\psi_{\text{denom}}}\left\{ \left(\mathbf{x}_{f}-\mathbf{x}_{u}\right)\cdot\nabla\psi-\chi\frac{\Delta t}{2}\mathbf{u}\cdot\nabla\psi\right\} \label{eq:Vcorr}\\
+\chi & = & \max\left(1-2\theta_{f},\ 0\right)
+\end{eqnarray}
+This gives a first-order error in time for $\theta>\frac{1}{2}$ which
+is only used for large Courant numbers ($>2$). It is stable on a
+uniform one-dimensional grid (appendix \eqref{sec:appxStability})
+but on an arbitrary grid, some smoothing is needed when $\theta>0$
+(section \ref{subsec:smoothing}).
+
+Appendix \eqref{sec:appxStability} shows that the first (diffusive)
+step of the implicit/explicit MPDATA $\theta$ scheme, eqn (\ref{eq:thetaUp}),
+is stable and bounded when 
+\begin{eqnarray}
+\theta\ge1-\frac{1}{c} & \text{and} & \theta\ge0\label{eq:thetaBounds}
+\end{eqnarray}
+with the Courant number for an arbitrary mesh, $c$, defined as in
+(\ref{eq:Courant}). Eqn (\ref{eq:thetaBounds}) can be used to set
+$\theta_{f}$ based on the values of the Courant number in the cells
+either side, $c_{\text{up}}$ and $c_{\text{down}}$ with a degree
+of safety added to avoid reaching the stability limits:
+\begin{equation}
+\theta_{f}=\max\left\{ 1-\frac{1}{c_{\text{up}}+0.25},\ 1-\frac{1}{c_{\text{down}}+0.25},\ 0\right\} .
+\end{equation}
+
+
+\subsection{Additional Smoothing for Large Courant numbers \label{subsec:smoothing}}
+
+Appendix \ref{sec:appxStability} shows that a linearised version
+of the implicit/explicit MPDATA is unconditionally stable on a uniform,
+one-dimensional grid. However this does not carry over onto an arbitrary
+grid. Therefore $V_{f}$ is smoothed where $\theta>0$. First a cell
+centre anti-diffusive flux is reconstructed from surrounding fluxes:
+\begin{equation}
+\mathbf{v}_{C}=\left(\sum_{f\in C}\mathbf{S}_{f}\mathbf{S}_{f}^{T}\right)^{-1}\sum_{f\in C}\mathbf{S}_{f}V_{f}
+\end{equation}
+which is the standard reconstruction of vectors from fluxes implemented
+in OpenFOAM ($\sum_{f\in C}\mathbf{S}_{f}\mathbf{S}_{f}^{T}$ is a
+tensor which can be inverted and pre-calculated for each cell). This
+is a second-order accurate, least squares reconstruction which reconstructs
+a uniform vector field exactly. The reconstructed velocity is then
+interpolated back onto faces and the dot product taken with $\mathbf{S}_{f}$
+to get a smoothed flux. The smoothed flux is used where $\theta>0$
+and at the faces of cells with one face with $\theta>0$:
+\begin{equation}
+V_{f}=\begin{cases}
+V_{f}\text{ from }(\ref{eq:Vcorr}) & \theta=0\\
+\mathbf{v}_{Cf}\cdot\mathbf{S}_{f} & \theta>0
+\end{cases}\label{eq:VcorrSmooth}
+\end{equation}
+where $\mathbf{v}_{Cf}$ is the reconstructed velocity $\mathbf{v}_{C}$
+linearly interpolated from cell centres to faces.
+
+\subsection{Linear Equation Solver}
+
+The first-order upwind blended implicit/explicit advection creates
+a sparse, asymmetric matrix $M$ with positive elements on the diagonal.
+To create the matrix equation, (\ref{eq:thetaUp}) is re-arranged
+so that the vector of new $\psi^{d}$ values ($\underline{\psi}^{d}$)
+is a linear combination of old $\psi^{n}$ values ($\underline{\psi}^{n}$):
+\begin{eqnarray}
+M\underline{\psi}^{d} & = & N\underline{\psi}^{n}\\
+\text{where }M_{ij} & = & \begin{cases}
+1+\frac{\Delta t}{V_{i}}\sum_{f\in i}\theta_{f}\max\left\{ U_{f},0\right\}  & \text{for }i=j\\
+-\frac{\Delta t}{V_{i}}\theta_{f}\max\left\{ -U_{f},0\right\}  & \text{where }f\text{ is between cells }i\text{ and }j
+\end{cases}\\
+\text{and }N_{ij} & = & \begin{cases}
+1-\frac{\Delta t}{V_{i}}\sum_{f\in i}\left(1-\theta_{f}\right)\max\left\{ U_{f},0\right\}  & \text{for }i=j\\
++\frac{\Delta t}{V_{i}}\left(1-\theta_{f}\right)\max\left\{ -U_{f},0\right\}  & \text{where }f\text{ is between cells }i\text{ and }j
+\end{cases}
+\end{eqnarray}
+Matrix $N$ is of course not created because the right hand vector
+entries can be evaluated directly. If the flow is divergence free
+then $\sum_{f\in i}U_{f}=0$ which implies that $M$ is strictly diagonally
+dominant. $M$ will not be diagonally dominant at row $i$ if the
+volume flux into cell $i$ in one time step is greater than the volume
+flux out in that time step plus the cell volume. This situation is
+not likely for atmospheric modelling as the atmosphere is low Mach
+number but it would require either a smaller time step or a matrix
+solver suitable for non-diagonally dominant matrices. 
+
+The matrix equations generated are solved with the standard OpenFOAM
+bi-conjugate gradient solver with a diagonal-based Incomplete LU preconditioner.
+Details of tolerances and iteration counts is given in section \ref{subsec:SolverPerformace}.
+
+\subsection{MPDATA Gauge}
+
+The infinite gauge variant of MPDATA (equivalent to Lax-Wendroff)
+can be used with implicit/explicit time stepping exactly as it is
+used with standard, explicit MPDATA \citep{SC86,KS17}. This removes
+the non-linearity of MPDATA and means that MPDATA no longer preserves
+positivity. 
+
+\subsection{Flux Corrected Transport (FCT) with Implicit Time Stepping\label{subsec:FCT}}
+
+\citet{Zal79} state that their flux corrected transport (FCT) algorithm
+can be used with implicit time stepping although we have not found
+examples of this in the literature. In fact, the algorithm as described
+by \citet{Zal79} does not guarantee monotonicity when used with implicit
+time stepping. This is because \citet{Zal79} bound the tracer at
+time $n+1$ by the diffusively transported tracer at time $n+1$ and
+the tracer at time $n$ at the current and upwind grid points. The
+tracer at time $n$ at the current and upwind grid points are not
+a suitable bounds if the tracer can move a long distance in one time
+step. When using implicit time stepping and large Courant numbers,
+local extrema can be advected by more than one mesh cell in one time
+step so local bounds from the previous time step no longer apply.
+We therefore define two variants of FCT to work with implicit time
+stepping. One guarantees monotonicity and the other guarantees boundedness
+within pre-defined bounds. 
+
+The first step if FCT is to advect using a monotonic, diffusive scheme
+to calculate $\psi^{d}$. Appendix \ref{sec:appxBounded} shows that
+the first-order upwind in space, blended explicit/implicit scheme
+(eqn \ref{eq:thetaUp}) provides this solution for arbitrary Courant
+numbers. The next step is to calculate the allowable minima and maxima
+for each cell which we will call $\psi_{\min}$ and $\psi_{\max}$.
+If we seek boundedness within pre-defined bounds then $\psi_{\min}$
+and $\psi_{\max}$ are these bounds. Otherwise $\psi_{\min}$ and
+$\psi_{\max}$ are the local extrema of $\psi^{d}$ in the current
+and neighbouring cells. Explicit FCT also uses $\psi^{n}$ which widens
+the bounds. Consequently, FCT for implicit, monotonic advection will
+be more diffusive because of the use solely of $\psi^{d}$ to define
+the local bounds:
+\begin{eqnarray}
+\text{for cell }C\ \psi_{\min} & = & \min_{N\in C}\left\{ \psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C\label{eq:boundsMin}\\
+\text{for cell }C\ \psi_{\max} & = & \max_{N\in C}\left\{ \psi_{N}^{d}\right\} \ \text{where }N\ \text{are the face neighbours of }C.\label{eq:boundsMax}
+\end{eqnarray}
+We next define the maximum allowable amount that each cell can rise
+or fall by and use the same notation as \citet{Zal79}
+\begin{eqnarray}
+Q_{p} & = & \psi_{\max}-\psi^{d}\\
+Q_{m} & = & \psi^{d}-\psi_{\min}.
+\end{eqnarray}
+We next need to modify the unbounded MPDATA high order flux corrections
+(HOC) from the implicit/explicit correction. This is the MPDATA flux
+correction, $V_{f}$, from (\ref{eq:VcorrSmooth}) multiplied by $\psi_{d}$
+at the upwind cell (upwind defined relative to $V_{f}$):
+\begin{equation}
+F_{f\text{HOC}}=\psi_{d\text{up}}V_{f}.
+\end{equation}
+From this we calculate the total high order flux that enters ($P_{p}$)
+and leaves ($P_{m}$) each cell:
+\begin{eqnarray}
+P_{p} & = & -\frac{\Delta t}{V_{C}}\sum_{f\in C}\min\left\{ F_{f\text{HOC}},\ 0\right\} \\
+P_{m} & = & \frac{\Delta t}{V_{C}}\sum_{f\in C}\max\left\{ F_{f\text{HOC}},\ 0\right\} .
+\end{eqnarray}
+Next we find the ratios of the allowable total fluxes to the actual
+high order fluxes:
+\begin{eqnarray}
+R_{p} & = & \begin{cases}
+\min\left\{ 1,\ \frac{Q_{p}}{P_{p}}\right\}  & \text{if }P_{p}>0\\
+0 & \text{otherwise}
+\end{cases}\\
+R_{m} & = & \begin{cases}
+\min\left\{ 1,\ \frac{Q_{m}}{P_{m}}\right\}  & \text{if }P_{m}>0\\
+0 & \text{otherwise.}
+\end{cases}
+\end{eqnarray}
+Finally we find the coefficient to multiply $F_{f\text{HOC}}$ in
+order to achieve either a monotonic solution or a solution with the
+required bounds:
+\begin{eqnarray*}
+F_{f} & = & \begin{cases}
+F_{f\text{HOC}}\min\left\{ R_{pN},\ R_{mC}\right\}  & \text{if }F_{f\text{HOC}}\ge0\\
+F_{f\text{HOC}}\min\left\{ R_{pC},\ R_{mN}\right\}  & \text{otherwise}
+\end{cases}\\
+\text{where} &  & \left(\mathbf{x}_{N}-\mathbf{x}_{C}\right)\cdot\mathbf{S}_{f}>0
+\end{eqnarray*}
+and cells $C$ and $N$ are either side of face $f$. Then the final
+update is
+\begin{equation}
+\psi_{C}^{n+1}=\psi_{C}^{d}-\frac{\Delta t}{V_{C}}\sum_{f\in C}F_{f}
+\end{equation}
+which is monotonic if (\ref{eq:boundsMin}) and (\ref{eq:boundsMax})
+are used to bound $\psi$ and bounded if specific bounds are specified.
+
+\section{Advection Test Cases}
+
+\subsection{One-dimensional Advection}
+
+\begin{figure}
+\begin{centering}
+Implicit/explicit MPDATA
+\par\end{centering}
+\begin{centering}
+\includegraphics[width=0.75\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/MPDATA/mesh10_100/1/Tcompare}
+\par\end{centering}
+\begin{centering}
+Implicit/explicit infinite gauge MPDATA
+\par\end{centering}
+\begin{centering}
+\includegraphics[width=0.75\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/LW/mesh10_100/1/Tcompare}
+\par\end{centering}
+\begin{centering}
+Implicit/explicit infinite gauge MPDATA with FCT
+\par\end{centering}
+\begin{centering}
+\includegraphics[width=0.75\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/twoShapes/LW_FCT/mesh10_100/1/Tcompare}
+\par\end{centering}
+\caption{Advection once around a periodic domain starting from mixed initial
+conditions $\psi^{0}$ using 40 grid points for the uniform resolution
+and 100 grid points for the resolution with a factor $R=10$ between
+finest and coarsest. The regions where the non-uniform resolution
+has a Courant number greater than 0.75 (where implicit time stepping
+is used) is shaded grey.\label{fig:1dresults}}
+\end{figure}
+
+The first test of the blended implicit/explicit MPDATA is in one dimensional
+with uniform velocity. In order to vary the Courant number in space
+so that the scheme is implicit and explicit in different places, variable
+resolution is used and compared with uniform resolution simulations.
+The variable resolution grids have resolution a factor of $R=10$
+finer in the middle of the unit length domain than the end points.
+There are $n$ cells ($n+1$ grid points) in the unit length and a
+constant ratio, $r=R^{\frac{2}{n-2}}$, between successive cells in
+the first half of the domain and $\frac{1}{r}$ in the second half.
+Therefore the resolution of cell $i$ is:
+\begin{equation}
+\Delta x_{i}=\begin{cases}
+\frac{1}{2}Rr^{-i}\frac{1-r}{1-rR} & i\le\frac{n}{2}-1\\
+\frac{1}{2}Rr^{\frac{n}{2}-i}\frac{1-r}{1-rR} & i\ge\frac{n}{2}.
+\end{cases}
+\end{equation}
+We use smooth initial conditions for evaluating convergence with resolution
+and mixed initial conditions for inspecting boundedness and overall
+quality of solution:
+\begin{eqnarray}
+\psi_{\text{smooth}}^{0} & = & \begin{cases}
+\frac{1}{2}\left\{ 1+\cos\pi\left(4x-1\right)\right\}  & x\in\left[0,0.5\right]\\
+0 & \text{otherwise}
+\end{cases}\\
+\psi_{\text{mixed}}^{0} & = & \begin{cases}
+\frac{1}{2}\left\{ 1+\cos\pi\left(4x-1\right)\right\}  & x\in\left[0,0.5\right]\\
+1 & x\in\left[0.6,0.8\right]\\
+0 & \text{otherwise.}
+\end{cases}
+\end{eqnarray}
+All simulations use velocity of $u=1$ and run for one time unit so
+that the tracer travels one complete revolution around the periodic
+domain.
+
+Figure \ref{fig:1dresults} shows solutions starting from the mixed
+initial conditions using 100 time steps each of length $\Delta t=0.01$.
+The uniform resolution has 40 cells giving a uniform Courant number
+of 0.4 (meaning that the time stepping is purely explicit). The non-uniform
+resolution has 100 cells with $R=10$ giving a Courant numbers in
+the range $c\in\left[0.4,4\right]$ so that implicit time stepping
+is used where $c>0.75$. As expected, the MPDATA results (top row
+of figure \ref{fig:1dresults}) are always positive for both the uniform
+resolution (explicit time stepping) and the non-uniform resolution
+(implicit/explicit time stepping). The non-uniform resolution solution
+produces a stable overshoot above the square wave which cannot be
+ruled out by MPDATA without limited fluxes. The infinite gauge version
+of MPDATA (middle row of figure \ref{fig:1dresults}) produces undershoots
+and overshoots and the solution is more accurate in the region of
+the smooth wave. Neither the uniform (explicit) or non-uniform (implicit/explicit)
+results appear more accurate than the other. The results using flux-corrected
+transport (FCT, bottom row of figure \ref{fig:1dresults}) are bounded
+above and below, demonstrating the efficacy of the flux corrections
+applied to implicit/explicit time stepping. The uniform (explicit)
+or non-uniform (implicit/explicit) results appear very similar.
+
+\noindent 
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.75\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/1d/nonUniform/cosBell/plots/l2converge}
+\par\end{centering}
+\caption{Convergence of the $\ell_{2}$ error norm with resolution of the one-dimensional
+advection of the smooth initial conditions, $\psi^{0}$. The uniform
+resolutions use 20, 40 and 80 grid points and the non-uniform resolutions
+use 50, 100 and 200 grid points with ratio $R=10$. Both use time
+steps of $\Delta t=0.02$, 0.01 and 0.005. Dotted lines show the slope
+of first and second-order convergence. \label{fig:1d_converge}}
+\end{figure}
+
+Convergence with resolution for all schemes on uniform and non-uniform
+meshes starting from the smooth initial conditions is shown in figure
+\ref{fig:1d_converge}. The uniform meshes always use purely explicit
+time stepping ($c=0.4$) and the non-uniform meshes use blended implicit/explicit
+since $c\in\left[0.4,4\right]$. MPDATA with and without the infinite
+gauge and with and without FCT give second-order convergence. Even
+though the non-uniform grid means that the Courant number reaches
+4 at the centre of the domain, the convergence remains strong.
+
+\subsection{Spherical Meshes}
+
+Advection test cases using implicit/explicit MPDATA calculated using
+various meshes are presented. There is no clearly optimal mesh of
+the sphere for atmospheric modelling (example meshes in fig. \ref{fig:grids}).
+Numerical methods need to be designed to allow for one or more of
+the following features of meshes of the sphere:
+\begin{enumerate}
+\item Latitude-longitude meshes are orthogonal and have uniform resolution
+following co-ordinate lines but they have severe convergence of mesh
+lines towards two poles so numerical methods are needed that can cope
+with very large Courant numbers. We use a latitude-longitude mesh
+with a cell at each pole (fig. \ref{fig:grids}).
+\item Hexagonal and triangular meshes of the sphere are quasi-uniform but
+they cannot be all three of:
+\begin{enumerate}
+\item orthogonal (mesh lines and cell centre to cell centre lines cross
+at right angles)
+\item centroidal (cell centres are at cell centroids)
+\item non-skew (cell centre to cell centre lines bisect mesh lines)
+\end{enumerate}
+meaning that special numerical treatment is needed in order to achieve
+second-order accuracy.
+\item Quasi-uniform versions of the cubed-sphere are non-orthogonal with
+large distortions (skewness) at cube edges and corners so numerical
+methods are needed that maintain accuracy at these distortions. The
+cubed-sphere in fig. \ref{fig:grids} uses the Gnomonic projection
+\citep{RPM96}.
+\item Skipped latitude-longitude meshes have factor of two reductions in
+resolution in the longitudinal direction at a few latitudes to prevent
+the mesh lines converging. At latitudes where the resolution reduces
+the meshes can be treated as non-conforming so that two quadrilateral
+cells are connected to one edge of the adjacent quadrilateral cell,
+or conforming with two quadrilaterals connected to adjacent, aligned
+edges of a distorted pentagon. The implementation described here treats
+them as conforming.
+\end{enumerate}
+\begin{figure}
+\begin{tabular}{cc}
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonPolarSkipped_c2/latLon_48x24/constant/mesh} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/c1_MPDATA_cubedSphere_2gauge_adv/cube_15/constant/mesh}\tabularnewline
+Skipped latitude-longitude, $48\times24$, 818 cells & Gnomonic cubed-sphere, $15\times15\times6=1,350$ cells \tabularnewline
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_HRgrid_2gauge_adv/HRgrid4/constant/mesh} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/weakDeformation/MPDATA_tri_2gauge_adv/tri4/constant/mesh}\tabularnewline
+Hexagaonal icosahedron, 642 cells & Triangular icosahedron, 1280 cells\tabularnewline
+\end{tabular}
+
+\caption{Some common meshes of the sphere viewed from above a point at a latitude
+of $45^{o}$.\label{fig:grids}}
+\end{figure}
+
+All of the meshes are decomposed into four domains for parallel processing
+with MPI.
+
+\subsection{Deformational Flow}
+
+\citet{LSPT12} describe deformational flow test cases to demonstrate
+a number of numerical properties of an advection scheme including
+order of convergence and monotonicity. We are using the non-divergent
+wind field which deforms and translates the initial conditions so
+that the final solution (at $t=T=5$) should be identical to the initial
+conditions (at $t=0$). The wind is defined by a stream function,
+$\Psi$, based on latitude, $\phi$, longitude, $\lambda$, time,
+$t$ and the radius of the sphere, $R=1$:
+\begin{equation}
+\Psi\left(\lambda,\phi,t\right)=\frac{10R}{T}\sin^{2}\left(\lambda-\frac{2\pi t}{T}\right)\cos^{2}\phi\cos\frac{\pi t}{T}-\frac{2\pi R}{T}\sin\phi
+\end{equation}
+
+
+\subsubsection{Gaussian Hills}
+
+The Gaussian hills initial conditions are infinitely smooth and so
+can be used to measure the numerical order of convergence. The initial
+conditions of the tracer, $\psi_{0}$, are given in terms of the three
+dimensional position vector, $\mathbf{x}$, in Caresian co-ordinates:
+\begin{eqnarray}
+\psi_{0}\left(\mathbf{x}\right) & = & 0.95\left[\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{1}\right)^{2}\right\} +\exp\left\{ -5\left(\mathbf{x}-\mathbf{x}_{2}\right)^{2}\right\} \right]\\
+\text{where }\mathbf{x}_{i} & = & \left(R\cos\phi_{i}\cos\lambda_{i},\ R\cos\phi_{i}\sin\lambda_{i},\ R\sin\phi_{i}\right)\\
+\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
+\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right)
+\end{eqnarray}
+The tracer concentrations at $t=2.5$ are show in fig. \ref{fig:fullDeformation2p5}
+calculated on five different meshes of the sphere and for a $30^{o}$
+rotated version of the latitude-longitude mesh, all at a similar resolution.
+The implicit/explicit $\theta$ MPDATA is used without flux limiting
+and without a gauge.
+
+Simulations using all the meshes in fig. \ref{fig:fullDeformation2p5}
+use a time step of $0.01$ (500 time steps in total) giving a Courant
+number of around 2 so that the simulations would be unstable if a
+purely explicit scheme were used (although at $t=2.5$ on the latitude-longitude
+mesh the Courant number is everywhere below 0.8). Resolutions and
+time steps are shown in table \ref{tab:dx_dt}.
+\noindent \begin{center}
+\begin{table}
+\noindent \begin{centering}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline 
+Mesh type & Nominal & N. cells & $\Delta x$ & $\Delta t$ & Figure\tabularnewline
+\hline 
+\hline 
+Latitude-longitude & $120\times60$ & 7,080 & $3.0^{o}$ & 0.02 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b\tabularnewline
+\hline 
+ & $240\times120$ & 28,800 & $1.5^{o}$ & 0.01 & \ref{fig:fullDeformation2p5}, \ref{fig:MPDATAGuassiandiagnostics},
+\ref{fig:MPDATAGaugeDiagnostics}\tabularnewline
+\hline 
+ & $480\times240$ & 114,720 & $0.75^{o}$ & 0.005 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b,\ref{fig:fullDeformationSlot5}\tabularnewline
+\hline 
+\hline 
+Skipped latitude- & $48\times24$ & 864 & $7.5^{o}$ &  & \ref{fig:grids}\tabularnewline
+\hline 
+ & $120\times60$ & 5,310 & $3.0^{o}$ & 0.02 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b\tabularnewline
+\hline 
+longitude & $240\times120$ & 21,750 & $1.5^{o}$ & 0.01 & \ref{fig:fullDeformation2p5}, \ref{fig:MPDATAGuassiandiagnostics},
+\ref{fig:MPDATAGaugeDiagnostics}\tabularnewline
+\hline 
+ & $480\times240$ & 88,470 & $0.75^{o}$ & 0.005 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b,\ref{fig:fullDeformationSlot5}\tabularnewline
+\hline 
+\hline 
+Cubed-sphere & $15\times15\times6$ & 1,350 & $6.4^{o}$ &  & \ref{fig:grids}\tabularnewline
+\hline 
+ & $30\times30\times6$ & 5,400 & $3.2^{o}$ & 0.02 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b\tabularnewline
+\hline 
+ & $60\times60\times6$ & 21,600 & $1.6^{o}$ & 0.01 & \ref{fig:fullDeformation2p5}, \ref{fig:MPDATAGuassiandiagnostics},
+\ref{fig:MPDATAGaugeDiagnostics}\tabularnewline
+\hline 
+ & $120\times120\times6$ & 86,400 & $0.8^{o}$ & 0.005 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b,\ref{fig:fullDeformationSlot5}\tabularnewline
+\hline 
+\hline 
+Hexagonal- & HR4 & 642 & $9.5^{o}$ &  & \ref{fig:grids}\tabularnewline
+\hline 
+ & HR6 & 10,242 & $2.4^{o}$ & 0.02 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b\tabularnewline
+\hline 
+icosahedral & HR7 & 40,962 & $1.2^{o}$ & 0.01 & \ref{fig:fullDeformation2p5}, \ref{fig:MPDATAGuassiandiagnostics},
+\ref{fig:MPDATAGaugeDiagnostics}\tabularnewline
+\hline 
+ & HR8 & 163,842 & $0.6^{o}$ & 0.005 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b,\ref{fig:fullDeformationSlot5}\tabularnewline
+\hline 
+\hline 
+Triangular- & Tri4 & 1,280 & $5.4^{o}$ &  & \ref{fig:grids}\tabularnewline
+\hline 
+ & Tri6 & 20,480 & $1.4^{o}$ & 0.01 & \ref{fig:fullDeformation2p5}, \ref{fig:MPDATAGuassiandiagnostics},
+\ref{fig:MPDATAGaugeDiagnostics}\tabularnewline
+\hline 
+icosahedral & Tri7 & 81,920 & $0.68^{o}$ & 0.005 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b,\ref{fig:fullDeformationSlot5}\tabularnewline
+\hline 
+ & Tri8 & 327,680 & $0.34^{o}$ & 0.0025 & \ref{fig:MPDATAGuassiandiagnostics}c, \ref{fig:MPDATAGaugeDiagnostics}b\tabularnewline
+\hline 
+\end{tabular}
+\par\end{centering}
+\caption{Resolutions and time steps for deformational advection.\label{tab:dx_dt}}
+\end{table}
+\par\end{center}
+
+The flow goes to zero at the north and south poles so the convergence
+of meridians of the un-rotated latitude-longitude mesh does not lead
+to large Courant numbers. However when the mesh is rotated by $30^{o}$,
+high winds cross the poles of the mesh so the maximum Courant number
+goes up to 70 (the contours in figure \ref{fig:fullDeformation2p5}
+show the Courant number). These large Courant numbers do not lead
+to instability, a lack of positivity or visible artefacts in the solution.
+The large Courant numbers are removed on the rotated, skipped latitude
+longitude mesh although some values above 0.8 are visible at $t=2.5$
+just poleward of the change in longitudinal resolution. On the cubed-sphere,
+the Courant number is largest near the cube corners due to mesh distortions
+and smaller cell areas. Some mesh imprinting is visible along the
+cube edges although this does not lead to a lack of positivity. The
+hexagonal and triangular icosahedral meshes are the most uniform meshes
+of the sphere and so no locally high Courant numbers are visible at
+$t=2.5$. The results from the hexagonal mesh appear accurate but
+note that this mesh has higher resolution that the other meshes, which
+explains the higher Courant number than the triangular mesh. On the
+triangular mesh, the maximum values are increased (from 0.95 to 1.08
+at 2.5s on triangular mesh 6). The anti-diffusion appears too strong
+which could be dangerous as it could lead to instability. It would
+probably be possible to optimise MPDATA for the triangular mesh but
+this has not been done. 
+
+\begin{figure}
+\begin{tabular}{cc}
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLon_c2/latLon_240x120/2.5/Traw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonRotated_c2/latLon_240x120/2.5/Traw}\tabularnewline
+Full lat-lon, $240\times120$, $\Delta x=1.5^{o}$ & Rotated, full lat-lon, 30$^{o}$, $240\times120$, $\Delta x=1.5^{o}$\tabularnewline
+28,800 cells, $\Delta t=0.01$ , $c\le2$ & 28,800 cells, $\Delta t=0.01$ , $c\le70$\tabularnewline
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_latLonSkipped_c2/latLon_240x120/2.5/Traw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_cubedSphere_c2/cube_60/2.5/Traw}\tabularnewline
+Skipped, rotated lat-lon, $240\times120$, $\Delta x\ge1.5^{o}$ & Cubed-sphere, $60\times60\times6$, $\Delta x\sim1.5^{o}$\tabularnewline
+21,750 cells, $\Delta t=0.01$ , $c<4.5$ & 21,600 cells, $\Delta t=0.01$ , $c<3.1$\tabularnewline
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_HRgrid_c2/HRgrid7/2.5/Traw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/fullDeformation/MPDATA_tri_c2/tri6/2.5/Traw}\tabularnewline
+Hexagaonal mesh 7, $\Delta x\sim1.2^{o}$ & Triangular mesh 6, $\Delta x\sim1.3^{o}$\tabularnewline
+40,962 cells, $\Delta t=0.01$ , $c\le2$ & 20,480 cells, $\Delta t=0.01$ , $c<2$\tabularnewline
+\multicolumn{2}{c}{\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/T}}\tabularnewline
+\end{tabular}
+
+\caption{Deformational flow on the sphere after 2.5 time units. The colours
+show the tracer (piece-wise constant in each cell). The contours show
+the Courant number contoured every 0.2 starting from $c=0.8$ (grey)
+to $c=2$ (black) and dashed contours every 1 for $c\ge3$. \label{fig:fullDeformation2p5}}
+\end{figure}
+
+MPDATA is, by design, positivity preserving but not bounded above
+or monotonic. The implicit/explicit MPDATA retains this feature on
+all of the meshes tested and displayed in figure \ref{fig:fullDeformation2p5}.
+The mininum and maximum tracer values for all time steps for each
+of the meshes in figure \ref{fig:fullDeformation2p5} are shown at
+the top of fig. \ref{fig:MPDATAGuassiandiagnostics}. All of the minima
+remain positive and very close to zero. The maxima decrease due to
+numerical diffusion but they do not decrease monotonically MPDATA
+is not a monotonic scheme. The maximum on the triangular mesh increases
+and oscillates before it decreases, would could be a feature that
+makes it prone to instability.
+
+\begin{figure}
+Maximum and minimum tracer values for all time steps
+
+\includegraphics[width=0.8\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/TminMax}
+
+Maximum and mean (dashed) Courant number for all time steps
+
+\includegraphics[width=0.8\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/CoMaxMean}
+
+Convergence of $\ell_{2}$ error norm with resolution
+
+\includegraphics[width=0.85\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2error}
+
+\caption{Diagnostics of the results for the deformational flow of the Gaussian
+hills with standard implicit/explicit MPDATA (no flux corrected transport
+and no gauge). Top and middle are diagnostics of the simulations shown
+in figure \ref{fig:fullDeformation2p5}. Bottom includes other resolutions.
+Mesh and time step details in table \ref{tab:dx_dt}.\label{fig:MPDATAGuassiandiagnostics}}
+\end{figure}
+
+The maximum and mean Courant number for each time step for each of
+the meshes in figure \ref{fig:fullDeformation2p5} are shown in the
+middle row of fig. \ref{fig:MPDATAGuassiandiagnostics}. The maximum
+Courant number for all meshes is greater than one using the time step
+of 0.01 and is minimum at the middle of the simulation ($t=2.5$).
+The maximum Courant number for the rotated latitude-longitude mesh
+reaches 70 and is always much larger than one which does not appear
+to significantly reduce the accuracy. The mean Courant numbers (dashed)
+are below or close to one throughout which helps to maintain accuracy.
+
+The convergence of the $\ell_{2}$ error norm with resolution is shown
+in the bottom row of fig. \ref{fig:MPDATAGuassiandiagnostics}. The
+mesh resolutions and time steps for these simulations are given in
+table \ref{tab:dx_dt}. The resolution to time step ratio is kept
+constant along each line. Included in this graph is simulations using
+half the time step and five times the time step for the latitude-longitude
+mesh (giving maximum Courant number around one and around ten in order
+show the impact of varying the mean Courant number. Reducing the time
+step to get $c<1$ means that the standard explicit MPDATA is used
+almost everywhere. Surprisingly, this increases the error slightly.
+When the Courant number is close to 2, $\theta$ is close to $\frac{1}{2}$
+and the temporal error correction is small. This implies that using
+second-order implicit/explicit time stepping is more accurate than
+using first-order time stepping with a correction. However the implicit/explicit
+time stepping requires a matrix inversion and so is more expensive.
+The simulation with $c<10$ is much less accurate because the temporal
+correction is not applied for $c>2$. However the simulation is still
+stable and positive definite.
+
+The convergence with resolution in fig. \ref{fig:MPDATAGuassiandiagnostics}
+is around first-order at coarse resolution and approaches second-order
+at higher resolution. It is expected for second-order advection schemes
+to converge at less that second order at coarse resolution for this
+test case, as demonstrated in figures 1 and 2 of \citet{LUJ+14} who
+presented results of this test case for a variety of advection schemes
+on different meshes. Errors saturate at coarse resolution and so the
+theoretical convergence rate is not achieved. The errors in figure
+\ref{fig:MPDATAGuassiandiagnostics} are similar to the second-order
+schemes presented in \citet{LUJ+14}. The exception is on the triangular
+mesh which looses accuracy at the highest resolution due to instabilities. 
+
+Better accuracy at the expense of positivity can be achieved with
+MPDATA by using the infinite gauge variant (equivalent to Lax-Wendroff)
+which works for the $\theta$ implicit/explicit version in the same
+way as the standard MPDATA \citep{SC86}. The maximum and minimum
+values of the tracer for infinite gauge simulations with the same
+resolution as those shown in figure \ref{fig:fullDeformation2p5}
+are shown in figure \ref{fig:MPDATAGaugeDiagnostics}. In comparison
+to the MPDATA simulations without a gauge (figure \ref{fig:MPDATAGuassiandiagnostics})
+the gauge results have a smaller reduction in the maximum (because
+the results are more accurate and hence less diffusive) but the minima
+is less than zero (spurious undershoots are generated). $\ell_{2}$
+errors with resolution are shown at the bottom of fig. \ref{fig:MPDATAGaugeDiagnostics}.
+The mesh spacing and times steps are the same as in figure \ref{fig:MPDATAGuassiandiagnostics}
+and are shown in table \ref{tab:dx_dt} . These simulations use one
+correction per time step. The order of convergence is higher and the
+$\ell_{2}$ errors lower than MPDATA results without a gauge (figure
+\ref{fig:MPDATAGuassiandiagnostics}). Again the results on the triangular
+mesh are not well behaved which could probably be fixed with optimisation
+for a triangular mesh.
+
+\begin{figure}
+Maximum and minimum tracer values for all time steps
+
+\includegraphics[width=0.8\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/TminMaxGauge}
+
+Convergence of $\ell_{2}$ error norm with resolution
+
+\includegraphics[width=0.8\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/l2errorGauge}
+
+\caption{Diagnostics of the results for the deformational flow of the Gaussian
+hills with implicit/explicit MPDATA with no flux corrected transport
+but with a gauge of 10. Other settings the same as fig. \ref{fig:MPDATAGuassiandiagnostics}.
+\label{fig:MPDATAGaugeDiagnostics}}
+\end{figure}
+
+
+\subsubsection{Slotted Cylinders}
+
+Deformational advection of slotted cylinders tests the implementation
+of limiters. \citet{LSPT12} recommend the same deformational velocity
+field as for the Gaussian hills with initial tracers defined by:
+\begin{eqnarray}
+\psi_{0}\left(\lambda,\phi\right) & = & \begin{cases}
+1 & \text{if }r_{i}\le r\text{ and }|\lambda-\lambda_{i}|\ge\frac{r}{6R}\text{ for }i=1,2\\
+1 & \text{if }r_{1}\le r\text{ and }|\lambda-\lambda_{1}|<\frac{r}{6R}\text{ and }\phi-\phi_{1}<-\frac{5}{12}\frac{r}{R}\\
+1 & \text{if }r_{2}\le r\text{ and }|\lambda-\lambda_{2}|<\frac{r}{6R}\text{ and }\phi-\phi_{2}>\frac{5}{12}\frac{r}{R}\\
+0.1 & \text{otherwise}
+\end{cases}\\
+\text{where }\mathbf{x} & = & \left(R\cos\phi\cos\lambda,\ R\cos\phi\sin\lambda,\ R\sin\phi\right)\\
+r & = & R/2,\ r_{i}=|\mathbf{x}-\mathbf{x}_{i}|\\
+\left(\lambda_{1},\phi_{1}\right) & = & \left(5\pi/6,\ 0\right)\\
+\left(\lambda_{2},\phi_{2}\right) & = & \left(7\pi/6,\ 0\right).
+\end{eqnarray}
+The tracer fields at the end of the simulations ($t=T=5$) are shown
+in fig. \ref{fig:fullDeformationSlot5} for all meshes at the highest
+resolution used and at time steps giving Courant numbers of around
+2 (see table \ref{tab:dx_dt}). This uses the implicit/explicit infinite
+guage MPDATA and flux corrected transport limited to ensure monotonicity.
+Fig. \ref{fig:fullDeformationSlot5} shows that the bounds of the
+initial conditions are maintained and no new extrema are generated,
+even on the rotated latitude-longitude mesh where the Courant number
+reaches 140. The skipped latitude-longitude mesh has sharp jumps in
+the Courant number which do not cause artefacts in the solution. The
+flux correction also removes the overshoots from the triangular mesh
+solution. This is, to our knowledge, the first monotonic and conservative
+solution of the advection equation using such a large Courant number.
+
+\noindent 
+\begin{figure}
+\begin{tabular}{cc}
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolar_c2/latLon_480x240/5/TslotRaw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolarRotated_c2/latLon_480x240/5/TslotRaw}\tabularnewline
+Full lat-lon, $480\times240$, $\Delta x=0.75{}^{o}$ & Rotated 30$^{o}$, full lat-lon, $480\times240$, $\Delta x=0.75{}^{o}$\tabularnewline
+115,200 cells, $\Delta t=0.005$ , $c\le2$ & 115,200 cells, $\Delta t=0.005$ , $c\le140$\tabularnewline
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_latLonPolarSkipped_c2/latLon_480x240/5/TslotRaw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_cubedSphere_c2/cube_120/5/TslotRaw}\tabularnewline
+Skipped, rotated lat-lon, $480\times240$, $\Delta x\ge0.75^{o}$ & Cubed-sphere, $120\times120\times6$, $\Delta x\sim0.75^{o}$\tabularnewline
+88,470 cells, $\Delta t=0.005$ , $c<4.5$ & 86,400 cells, $\Delta t=0.005$ , $c<3.1$\tabularnewline
+\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_HRgrid_c2/HRgrid8/5/TslotRaw} & \includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/slottedCylinder/LW_FCT_tri_c2/tri7/5/TslotRaw}\tabularnewline
+Hexagaonal mesh 8, $\Delta x\sim0.6^{o}$ & Triangular mesh 7, $\Delta x\sim0.7^{o}$\tabularnewline
+163,842 cells, $\Delta t=0.005$ , $c\le2$ & 81,920 cells, $\Delta t=0.005$ , $c<2$\tabularnewline
+\multicolumn{2}{c}{\includegraphics[width=0.48\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/legends/TslotRaw_T}}\tabularnewline
+\end{tabular}
+
+\caption{Deformational flow on the sphere after 5 time units. The colours show
+the piecewise uniform value of the tracer value in each cell. The
+contours show the Courant number contoured every 0.2 starting from
+$c=0.8$ (grey) to $c=2$ (black) and dotted black contours every
+1 for $c\ge3$. \label{fig:fullDeformationSlot5}}
+\end{figure}
+
+
+\subsection{Solver Performance\label{subsec:SolverPerformace}}
+
+Solver performance is reported for a selection of simulations using
+full latitude-longitude meshes as the large inhomogeneity of cell
+size and large range of Courant numbers leads to an ill conditioned
+matrix and poor solver performance \citep{TB15}. The full latitude-longitude
+mesh therefore represents a worst case. Each time step consists of
+one implicit solve using the standard OpenFOAM bi-conjugate gradient
+solver with a diagonal-based Incomplete LU preconditioner. 
+
+\begin{figure}
+\includegraphics[width=1\textwidth]{/home/hilary/OpenFOAM/hilary-7/run/hilary/advection/deformingOnSphere/plots/iterations}
+
+\caption{Number of solver iterations per time step for simulations on unrotated
+latitude-longitude meshes. The legend shows if the simulation used
+a solver tolerance of $10^{-6}$ or $10^{-12}$. \label{fig:nIterations}}
+\end{figure}
+
+The number of iterations of the solver per time step is shown in fig.
+\ref{fig:nIterations} for various simulations on different resolutions
+of the latitude-longitude mesh. The number of iterations is smallest
+around time 2.5 when the wind speed is lowest and so the Courant number
+is smallest. For simulations with the maximum Courant number less
+than 0.75 in the middle of the simulations, the number of solver iterations
+drops to zero because the simulation is purely explicit. The simulations
+represented by black lines have a maximum Courant number of 1 and
+so the number of iterations is small throughout the simulation. For
+the simulations with a maximum Courant number of 2 (in blue), the
+number of iterations is always below 5. Once the maximum Courant number
+reaches 10, the number of iterations can be over 15. The number of
+iterations increases slower than linearly with Courant number, which
+is necessary for efficiency. However it is possible to reduce the
+number of iterations by reducing the solver tolerance. The tighter
+tolerance made less than 1\% difference to the error norms of the
+final solution (not shown). Higher spatial resolution has little influence
+on the number of iterations per time step. 
+
+\section{Conclusions}
+
+\section*{Acknowledgements}
+
+\bibliographystyle{abbrvnat}
+\bibliography{numerics}
+
+
+\appendix
+
+\section{Boundedness of the first-order Upwind Implicit/Explicit Scheme\label{sec:appxBounded}}
+
+The first-order upwind, implicit/explicit scheme can be written:
+\begin{eqnarray}
+\psi_{C}^{n+1}=\psi_{C}^{n} & + & \frac{\Delta t}{V_{C}}\sum_{i\in\text{in}}\left(1-\theta_{i}\right)U_{i}\psi_{i}^{n}+\frac{\Delta t}{V_{C}}\sum_{i\in\text{in}}\theta_{i}U_{i}\psi_{i}^{n+1}\label{eq:thetaUp-2}\\
+ & - & \frac{\Delta t}{V_{C}}\sum_{o\in\text{out}}\left(1-\theta_{o}\right)U_{o}\psi_{C}^{n}-\frac{\Delta t}{V_{C}}\sum_{o\in\text{out}}\theta_{o}U_{o}\psi_{C}^{n+1}\nonumber 
+\end{eqnarray}
+for cell $C$ with faces $i\in\text{in}$ with flow into cell $C$
+and faces $j\in\text{out}$ with flow out of cell $C$, off-centering
+values $\theta_{i,j}\in[0,1]$, $U_{i,o}$ the volume fluxes through
+faces $i,o$ and $\psi_{i}$ the values of $\psi$ in cells through
+the $i$ faces. The $\theta_{i,o}$ are defined on faces for conservation
+so the boundedness properties of this scheme require thought. This
+can be re-arranged to give:
+\begin{equation}
+\psi_{C}^{n+1}=\gamma\psi_{C}^{n}+{\displaystyle \sum_{_{i\in\text{in}}}}\alpha_{i}\psi_{i}^{n}+\sum_{_{i\in\text{in}}}\beta_{i}\psi_{i}^{n+1}\label{eq:convexScheme}
+\end{equation}
+where
+\begin{eqnarray*}
+\alpha_{i} & = & \frac{\frac{\Delta t}{V_{C}}\left(1-\theta_{i}\right)U_{i}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}\text{ for each }i\\
+\beta_{i} & = & \frac{\frac{\Delta t}{V_{j}}\theta_{i}U_{i}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}\text{ for each }i\\
+\gamma & = & \frac{1-\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\left(1-\theta_{o}\right)U_{o}}{1+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\theta_{o}U_{o}}.
+\end{eqnarray*}
+$\alpha_{i}$, $\beta_{i}$ and $\gamma$ are all positive as long
+as the $\theta_{0}$ are chosen to give
+\begin{equation}
+\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}\left(1-\theta_{o}\right)U_{o}\le1
+\end{equation}
+which can be accomplished by setting
+\begin{equation}
+\theta_{f}\ge1-\frac{1}{\frac{\Delta t}{V_{C}}{\displaystyle \sum_{o\in\text{out}}}U_{o}}
+\end{equation}
+for the cells either side of face $f$. Hence all $\psi$ are positive
+at the next time step. If, in addition the flow is discretely divergence
+free then:
+\begin{equation}
+\sum_{i\in\text{in}}U_{i}=\sum_{o\in\text{out}}U_{o}
+\end{equation}
+which implies
+\begin{equation}
+\sum_{i\in\text{in}}\alpha_{i}+\sum_{i\in\text{in}}\beta_{i}+\gamma=1\label{eq:convexParams}
+\end{equation}
+so from (\ref{eq:convexScheme}) $\psi_{C}^{n+1}$ is a convex combination
+of $\psi_{C}^{n}$, $\psi_{i}^{n}$ and $\psi_{i}^{n+1}$. This in
+fact proves that the scheme is globally bounded. This can be shown
+by contradiction. If we assume that $\psi_{C}^{n+1}$ is the global
+maximum at time $n+1$ and it is greater than $\psi_{j}^{n}$ for
+all cells $j$ in the mesh then (\ref{eq:convexScheme}) and (\ref{eq:convexParams})
+cannot both hold for cell $C$. It is necessary for this scheme to
+be bounded as it is used as the bounded scheme for the flux corrected
+transport (section \eqref{subsec:FCT}).
+
+\section{Stability Analysis of the Second-Order Implicit/Explicit Scheme\label{sec:appxStability}}
+
+MPDATA is a non-linear scheme but the infinite gauge version becomes
+the linear Lax-Wendroff scheme and so von-Neumman stability analysis
+can be applied. In one dimension, for constant velocity, $u>0$, and
+constant Courant number $c=u\Delta t/\Delta x$, the one-dimensional
+implicit/explicit Lax-Wendroff scheme is
+\begin{eqnarray}
+\psi_{j}^{n+1} & = & \psi_{j}^{n}-c\left(1-\theta\right)\left(\psi_{j}^{n}-\psi_{j-1}^{n}\right)-c\theta\left(\psi_{j}^{n+1}-\psi_{j-1}^{n+1}\right)\label{eq:LWtheta}\\
+ & - & \frac{c}{2}\left(1-\chi c\right)\left(\psi_{j+1}^{n}-2\psi_{j}^{n}+\psi_{j-1}^{n}\right)\nonumber 
+\end{eqnarray}
+where we showed in section \eqref{subsec:MPDATA_theta} that $\chi=1-2\theta$
+gives second-order accuracy. From appendix \eqref{sec:appxBounded}
+we can see that we need $\theta>1-1/c$ for stability of the first-order
+upwind part (the first two terms of (\eqref{eq:LWtheta})). In order
+to revert to the explicit version for $c\le1$ and to transition smoothly
+to the implicit version we use
+\begin{equation}
+\theta=\begin{cases}
+0 & c\le1\\
+1-\frac{1}{c} & c>1
+\end{cases}
+\end{equation}
+and analyse (\eqref{eq:LWtheta}) separately for these two cases.
+Considering a Fourier mode with wavenumber $k$, the amplification
+factor, $A$, of (\eqref{eq:LWtheta}) is
+\begin{equation}
+A=\frac{1-c\left(\chi c-\theta\right)\left(1-\cos k\Delta x\right)-ic\left(1-\theta\right)\sin k\Delta x}{1+c\theta\left(1-\cos k\Delta x\right)+ic\theta\sin k\Delta x}.
+\end{equation}
+For $\theta=0$ and $\chi=1$ we recover the usual Lax-Wendroff stability
+constraints of $c\in\left[-1,1\right]$. For $c\ge1$ and $\theta=1-\frac{1}{c}$
+it can be shown that stability requires $\chi\in\left[0,\frac{2c-1}{c^{2}}\right]$.
+The stability range for $\chi$ is compared with the second-order
+requirement for $\chi$ in figure \eqref{fig:MPDATA_chi}. For behaviour
+as close as possible to second-order for the maximum range of Courant
+numbers and for stability we use:
+\begin{equation}
+\chi=\max\left(1-2\theta,\ 0\right).
+\end{equation}
+
+\begin{figure}
+\noindent \begin{centering}
+\includegraphics[width=0.75\textwidth]{figures/LWstability}
+\par\end{centering}
+\caption{Comparison of the stability limits, the second-order requirement and
+the value of $\chi$ used for the MPDATA correction.\label{fig:MPDATA_chi}}
+\end{figure}
+
+\end{document}

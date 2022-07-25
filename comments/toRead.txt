@@ -1,0 +1,9 @@
+ev ~/papers/Smol06.pdf \
+   ~/papers/LZ22.pdf \
+   ~/papers/KDK+19.pdf
+
+SS05b:
+For the sake of computational stability, we shall extrapolate from the experience with ﬁnite-diﬀerence formulations and assure that the denominators and numerators in approximations to all $~\Psi^{-1}\partial\Psi$ factors in (13) use the same elements. This allows for exploiting the elementary boundedness property $|\sum\pm\Psi/\sum\Psi|\le 1$ of positive-definite scalar ﬁelds.
+
+From James:
+
